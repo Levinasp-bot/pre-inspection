@@ -77,7 +77,7 @@ fun LoginScreen() {
 
             // Judul lebih besar dan berjarak
             Text(
-                text = "SI-PRILA",
+                text = "?????",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

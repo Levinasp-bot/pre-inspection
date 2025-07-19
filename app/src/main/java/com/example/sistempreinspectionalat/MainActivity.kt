@@ -11,14 +11,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.List
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,7 +26,15 @@ import com.example.sistempreinspectionalat.ui.theme.SistemPreinspectionAlatTheme
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import android.content.Intent
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,77 +50,169 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     val darkBlue = Color(0xFF0066B3)
-    val lightBlue = Color(0xFFE9F3FC)
     val context = LocalContext.current
+    val firestore = FirebaseFirestore.getInstance()
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    var outstandingCount by remember { mutableStateOf(0) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(darkBlue)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(darkBlue)
-                .padding(top = 48.dp, bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "Logo",
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
+    // Buat status bar transparan
+    val systemUiController = rememberSystemUiController()
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = Color.Transparent,
+            darkIcons = false
+        )
+    }
+
+    // Ambil data checklist
+    LaunchedEffect(Unit) {
+        try {
+            val result = firestore.collection("checklist").get().await()
+            val count = result.documents.count { doc ->
+                doc.data?.any { entry ->
+                    val value = entry.value as? String ?: return@any false
+                    value.equals("CUKUP", ignoreCase = true) || value.equals("TIDAK BAIK", ignoreCase = true)
+                } == true
+            }
+            outstandingCount = count
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
                 Text(
-                    text = "SI-PRILA",
-                    fontSize = 32.sp,
+                    text = "Menu",
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    modifier = Modifier.padding(16.dp)
+                )
+                Divider()
+                NavigationDrawerItem(
+                    label = { Text("Logout") },
+                    selected = false,
+                    onClick = {
+                        FirebaseAuth.getInstance().signOut()
+                        Toast.makeText(context, "Logout berhasil", Toast.LENGTH_SHORT).show()
+                        context.startActivity(Intent(context, LoginActivity::class.java))
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "BERANDA",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
         }
-
-        Surface(
-            color = lightBlue,
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Column(
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {} // Kosongkan
+        ) { paddingValues ->
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(paddingValues)
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    HomeMenuItem("Pre\nInspection", Icons.Default.Build, darkBlue) {
-                        context.startActivity(Intent(context, PreInspectionActivity::class.java))
-                    }
-                    HomeMenuItem("Data\nPengukuran", Icons.Default.BarChart, darkBlue) {
-                        // TODO: Intent ke Data Pengukuran
-                    }
+                // Background
+                Image(
+                    painter = painterResource(id = R.drawable.home_bg),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Manual Icon Menu di pojok kiri atas
+                IconButton(
+                    onClick = { scope.launch { drawerState.open() } },
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .statusBarsPadding()
+                        .align(Alignment.TopStart)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = Color(0xFF0066B3)
+                    )
                 }
-                Spacer(modifier = Modifier.height(20.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    HomeMenuItem("Outstanding\nChecklist", Icons.Default.Warning, darkBlue) {
-                        context.startActivity(Intent(context, OutstandingActivity::class.java))
+
+                // Konten utama
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 72.dp, start = 24.dp, end = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        HomeMenuItem(
+                            label = "Pre\nInspection",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            },
+                            backgroundColor = darkBlue,
+                            onClick = {
+                                context.startActivity(Intent(context, PreInspectionActivity::class.java))
+                            }
+                        )
+                        HomeMenuItem(
+                            label = "Alat",
+                            icon = {
+                                Image(
+                                    painter = painterResource(id = R.drawable.crane),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            },
+                            backgroundColor = darkBlue,
+                            onClick = {
+                                context.startActivity(Intent(context, AlatActivity::class.java))
+                            }
+                        )
                     }
-                    HomeMenuItem("Laporan &\nRiwayat", Icons.Default.List, darkBlue) {
-                        // TODO: Intent ke Laporan
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        HomeMenuItem(
+                            label = "Outstanding\nChecklist",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            },
+                            backgroundColor = darkBlue,
+                            badgeCount = outstandingCount,
+                            onClick = {
+                                context.startActivity(Intent(context, OutstandingActivity::class.java))
+                            }
+                        )
+                        HomeMenuItem(
+                            label = "Laporan &\nRiwayat",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.List,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            },
+                            backgroundColor = darkBlue,
+                            onClick = {
+                                context.startActivity(Intent(context, LaporanActivity::class.java))
+                            }
+                        )
                     }
                 }
             }
@@ -123,21 +221,42 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun HomeMenuItem(label: String, icon: ImageVector, backgroundColor: Color, onClick: () -> Unit) {
+fun HomeMenuItem(
+    label: String,
+    icon: @Composable () -> Unit, // ✅ ubah ke composable
+    backgroundColor: Color,
+    onClick: () -> Unit,
+    badgeCount: Int = 0
+) {
     Box(
         modifier = Modifier
             .size(140.dp)
             .background(backgroundColor, RoundedCornerShape(16.dp))
-            .clickable { onClick() },  // <-- trigger onClick saat diklik
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(36.dp)
-            )
+            Box(modifier = Modifier.size(36.dp)) {
+                icon() // ✅ tampilkan composable icon/image
+
+                if (badgeCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .align(Alignment.TopEnd)
+                            .offset(x = 6.dp, y = (-6).dp)
+                            .background(Color.Red, shape = RoundedCornerShape(9.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = badgeCount.toString(),
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = label,

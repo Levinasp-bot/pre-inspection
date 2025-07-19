@@ -1,5 +1,7 @@
 package com.example.sistempreinspectionalat
 
+import android.app.Activity
+import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
@@ -8,29 +10,35 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.example.sistempreinspectionalat.ui.theme.SistemPreinspectionAlatTheme
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -43,11 +51,15 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import kotlinx.coroutines.tasks.await
+import org.json.JSONArray
 
 class ChecklistActivity : ComponentActivity() {
     private val cloudinaryUrl = "https://api.cloudinary.com/v1_1/dutgwdhss/image/upload"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
 
         val kodeAlat = intent.getStringExtra("kode_alat") ?: ""
         val tanggal = intent.getStringExtra("tanggal") ?: ""
@@ -63,158 +75,256 @@ class ChecklistActivity : ComponentActivity() {
             }
         }
     }
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ChecklistScreen(kodeAlat: String, shift: String, tanggal: String) {
         val firestore = FirebaseFirestore.getInstance()
         val context = LocalContext.current
         val checklistItems = remember { mutableStateListOf<String>() }
+
         val kondisiList = listOf("BAIK", "CUKUP", "TIDAK BAIK")
         val kondisiMap = remember { mutableStateMapOf<String, String>() }
+        val coroutineScope = rememberCoroutineScope()
+        val auth = FirebaseAuth.getInstance()
+        val userName = remember { mutableStateOf("") }
+        val darkBlue = Color(0xFF0066B3)
         val keteranganMap = remember { mutableStateMapOf<String, String>() }
         val fotoMap = remember { mutableStateMapOf<String, Bitmap?>() }
-        val coroutineScope = rememberCoroutineScope()
 
+        // Load checklist dari Firestore
         LaunchedEffect(kodeAlat) {
-            Log.d("ChecklistScreen", "Mengambil data untuk kodeAlat: $kodeAlat")
-
-            if (kodeAlat.isBlank()) {
-                Toast.makeText(context, "kodeAlat kosong", Toast.LENGTH_SHORT).show()
-                Log.e("ChecklistScreen", "kodeAlat kosong")
-                return@LaunchedEffect
-            }
-
             firestore.collection("alat")
                 .whereEqualTo("kode_alat", kodeAlat)
                 .get()
                 .addOnSuccessListener { result ->
-                    if (result.isEmpty) {
-                        Toast.makeText(context, "Dokumen tidak ditemukan", Toast.LENGTH_SHORT).show()
-                        Log.e("ChecklistScreen", "Tidak ada dokumen dengan kode_alat = $kodeAlat")
-                    } else {
-                        val doc = result.documents.first()
-                        val visual = doc.get("Visual") as? List<*>
-                        val fungsi = doc.get("Fungsi System") as? List<*>
-
-                        if (visual == null && fungsi == null) {
-                            Toast.makeText(context, "Field checklist tidak ditemukan", Toast.LENGTH_SHORT).show()
-                            Log.e("ChecklistScreen", "Field Visual dan Fungsi System tidak ditemukan")
-                        }
-
-                        (visual.orEmpty() + fungsi.orEmpty()).filterIsInstance<String>().forEach {
-                            checklistItems.add(it)
-                            kondisiMap[it] = ""
-                        }
+                    val doc = result.documents.firstOrNull()
+                    val items = doc?.get("item") as? List<*> ?: emptyList<Any>()
+                    items.filterIsInstance<String>().forEach {
+                        checklistItems.add(it)
+                        kondisiMap[it] = ""
                     }
                 }
-                .addOnFailureListener { e ->
-                    Toast.makeText(context, "Gagal mengambil checklist", Toast.LENGTH_SHORT).show()
-                    Log.e("ChecklistScreen", "Gagal ambil data: ${e.message}")
+                .addOnFailureListener {
+                    Toast.makeText(context, "Gagal ambil checklist", Toast.LENGTH_SHORT).show()
                 }
         }
 
-        Scaffold(
-            topBar = {
-                TopAppBar(title = { Text("Checklist Pre-Inspection") })
-            },
-            content = { paddingValues ->
-                LazyColumn(
+        // Load user
+        LaunchedEffect(Unit) {
+            val uid = auth.currentUser?.uid
+            if (!uid.isNullOrEmpty()) {
+                val snapshot = firestore.collection("users").whereEqualTo("uid", uid).get().await()
+                if (!snapshot.isEmpty) {
+                    userName.value = snapshot.documents.first().getString("nama") ?: ""
+                }
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize().background(darkBlue)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+
+                // HEADER
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 20.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    items(checklistItems) { item ->
-                        ChecklistItemRow(
-                            item = item,
-                            kondisi = kondisiMap[item] ?: "",
-                            kondisiOptions = kondisiList,
-                            onKondisiChange = { newValue -> kondisiMap[item] = newValue },
-                            keterangan = keteranganMap[item] ?: "",
-                            onKeteranganChange = { keteranganMap[item] = it },
-                            imageBitmap = fotoMap[item],
-                            onImageCapture = { bitmap -> fotoMap[item] = bitmap }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { (context as? Activity)?.finish() }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Checklist Pre-Inspection",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     }
+                }
 
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = {
-                                coroutineScope.launch {
-                                    val belumPilihKondisi = kondisiMap.values.any { it.isBlank() }
-                                    val adaKekurangan = checklistItems.any { item ->
-                                        val kondisi = kondisiMap[item] ?: ""
-                                        val keterangan = keteranganMap[item]?.trim().orEmpty()
-                                        val foto = fotoMap[item]
-                                        if (kondisi == "CUKUP" || kondisi == "TIDAK BAIK") {
-                                            keterangan.isBlank() || foto == null
-                                        } else false
-                                    }
+                // KONTEN PUTIH ROUNDED
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.White,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(checklistItems) { item ->
+                            ChecklistItemRow(
+                                item = item,
+                                kondisi = kondisiMap[item] ?: "",
+                                onKondisiChange = { newValue -> kondisiMap[item] = newValue },
+                                keterangan = keteranganMap[item] ?: "",
+                                onKeteranganChange = { newValue -> keteranganMap[item] = newValue },
+                                imageBitmap = fotoMap[item],
+                                onImageCapture = { bitmap -> fotoMap[item] = bitmap }
+                            )
+                        }
 
-                                    if (belumPilihKondisi) {
-                                        Toast.makeText(context, "Masih ada kondisi yang belum dipilih", Toast.LENGTH_SHORT).show()
-                                        return@launch
-                                    }
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        val belumDipilih = kondisiMap.values.any { it.isBlank() }
+                                        if (belumDipilih) {
+                                            Toast.makeText(context, "Masih ada kondisi yang belum dipilih", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
 
-                                    if (adaKekurangan) {
-                                        Toast.makeText(context, "Untuk kondisi CUKUP atau TIDAK BAIK, keterangan dan foto wajib diisi", Toast.LENGTH_SHORT).show()
-                                        return@launch
-                                    }
+                                        val data = hashMapOf(
+                                            "kode_alat" to kodeAlat,
+                                            "shift" to shift,
+                                            "tanggal" to tanggal,
+                                            "operator" to userName.value
+                                        )
 
-                                    val checklistData = hashMapOf(
-                                        "kode_alat" to kodeAlat,
-                                        "shift" to shift,
-                                        "tanggal" to tanggal
-                                    )
+                                        checklistItems.forEach { item ->
+                                            val key = item.lowercase().replace(" ", "_")
+                                            data[key] = kondisiMap[item] ?: ""
+                                        }
 
-                                    for (item in checklistItems) {
-                                        val key = item.lowercase().replace(" ", "_")
-                                        val kondisi = kondisiMap[item] ?: ""
-                                        checklistData[key] = kondisi
+                                        val itemTidakBaik = checklistItems.filter {
+                                            kondisiMap[it] == "TIDAK BAIK"
+                                        }
 
-                                        if (kondisi == "CUKUP" || kondisi == "TIDAK BAIK") {
-                                            checklistData["${key}_keterangan"] = keteranganMap[item] ?: ""
+                                        firestore.collection("checklist")
+                                            .add(data)
+                                            .addOnSuccessListener {
+                                                itemTidakBaik.forEach { item ->
+                                                    val gambar = fotoMap[item]
+                                                    val keterangan = keteranganMap[item] ?: ""
 
-                                            val bitmap = fotoMap[item]
-                                            if (bitmap != null) {
-                                                val imageUrl = withContext(Dispatchers.IO) {
-                                                    suspendCancellableCoroutine<String?> { cont ->
-                                                        uploadImageToCloudinary(bitmap) { url ->
-                                                            cont.resume(url, null)
+                                                    if (gambar != null) {
+                                                        // Upload gambar ke Cloudinary
+                                                        uploadImageToCloudinary(gambar) { imageUrl ->
+                                                            if (!imageUrl.isNullOrEmpty()) {
+                                                                val dataOutstanding = hashMapOf(
+                                                                    "item" to item,
+                                                                    "gambar" to imageUrl,
+                                                                    "keterangan" to keterangan,
+                                                                    "kode_alat" to kodeAlat,
+                                                                    "kondisi" to "TIDAK BAIK",
+                                                                    "operator" to userName.value,
+                                                                    "outstanding" to true,
+                                                                    "shift" to shift,
+                                                                    "status_perbaikan" to "perlu perbaikan PT BIMA",
+                                                                    "tanggal" to tanggal
+                                                                )
+
+                                                                firestore.collection("outstanding")
+                                                                    .add(dataOutstanding)
+                                                                    .addOnSuccessListener {
+                                                                        Log.d("Firestore", "Data outstanding berhasil disimpan")
+                                                                    }
+                                                                    .addOnFailureListener {
+                                                                        Log.e("Firestore", "Gagal simpan data outstanding", it)
+                                                                    }
+                                                            }
                                                         }
+                                                    } else {
+                                                        // Jika tidak ada gambar
+                                                        val dataOutstanding = hashMapOf(
+                                                            "item" to item,
+                                                            "gambar" to "", // kosong jika tidak ada
+                                                            "keterangan" to keterangan,
+                                                            "kode_alat" to kodeAlat,
+                                                            "kondisi" to "TIDAK BAIK",
+                                                            "operator" to userName.value,
+                                                            "outstanding" to true,
+                                                            "shift" to shift,
+                                                            "status_perbaikan" to "perlu perbaikan PT BIMA",
+                                                            "tanggal" to tanggal
+                                                        )
+
+                                                        firestore.collection("outstanding")
+                                                            .add(dataOutstanding)
+                                                            .addOnSuccessListener {
+                                                                Log.d("Firestore", "Data outstanding (tanpa gambar) berhasil disimpan")
+                                                            }
+                                                            .addOnFailureListener {
+                                                                Log.e("Firestore", "Gagal simpan data outstanding", it)
+                                                            }
                                                     }
                                                 }
 
-                                                if (imageUrl != null) {
-                                                    checklistData["${key}_foto_url"] = imageUrl
-                                                } else {
-                                                    Toast.makeText(context, "Gagal upload gambar untuk $item", Toast.LENGTH_SHORT).show()
-                                                    return@launch
+                                                Toast.makeText(context, "Checklist berhasil disimpan", Toast.LENGTH_SHORT).show()
+
+
+                                                if (itemTidakBaik.isNotEmpty()) {
+                                                    val keteranganGabungan = itemTidakBaik.joinToString("\n") {
+                                                        "- $it: ${keteranganMap[it] ?: "-"}"
+                                                    }
+
+                                                    // Siapkan data JSON untuk dikirim ke Apps Script
+                                                    val jsonBody = JSONObject().apply {
+                                                        put("kode_alat", kodeAlat)
+                                                        put("tanggal", tanggal)
+                                                        put("nama", userName.value)
+                                                        put("checklist", JSONArray(itemTidakBaik))
+                                                        put("keterangan", keteranganGabungan)
+                                                    }
+
+                                                    val client = OkHttpClient()
+                                                    val requestBody = RequestBody.create(
+                                                        "application/json; charset=utf-8".toMediaTypeOrNull(),
+                                                        jsonBody.toString()
+                                                    )
+
+                                                    val request = Request.Builder()
+                                                        .url("https://script.google.com/macros/s/AKfycbzZuShOBdWmR9nceO7PmzqjZgf56B1lLVeHO57rGtfs6dHfHaVWqADnRFFdQJkhe_ad/exec") // ganti dengan URL Apps Script kamu
+                                                        .post(requestBody)
+                                                        .build()
+
+                                                    client.newCall(request).enqueue(object : Callback {
+                                                        override fun onFailure(call: Call, e: IOException) {
+                                                            Log.e("NotifikasiEmail", "Gagal kirim notifikasi: ${e.message}")
+                                                        }
+
+                                                        override fun onResponse(call: Call, response: Response) {
+                                                            if (response.isSuccessful) {
+                                                                Log.d("NotifikasiEmail", "Berhasil kirim notifikasi ke email")
+                                                            } else {
+                                                                Log.e("NotifikasiEmail", "Gagal: ${response.body?.string()}")
+                                                            }
+                                                        }
+                                                    })
+                                                    val intent = Intent(this@ChecklistActivity, MainActivity::class.java)
+                                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                                    startActivity(intent)
+                                                    finish()
                                                 }
                                             }
-                                        }
+                                            .addOnFailureListener {
+                                                Toast.makeText(context, "Gagal menyimpan checklist", Toast.LENGTH_SHORT).show()
+                                            }
                                     }
-
-                                    firestore.collection("checklist")
-                                        .add(checklistData)
-                                        .addOnSuccessListener {
-                                            Toast.makeText(context, "Checklist berhasil disimpan", Toast.LENGTH_SHORT).show()
-                                        }
-                                        .addOnFailureListener {
-                                            Toast.makeText(context, "Gagal menyimpan checklist", Toast.LENGTH_SHORT).show()
-                                        }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Simpan")
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = darkBlue)
+                            ) {
+                                Text("Simpan", fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
                     }
                 }
             }
-        )
+        }
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -222,60 +332,51 @@ class ChecklistActivity : ComponentActivity() {
     fun ChecklistItemRow(
         item: String,
         kondisi: String,
-        kondisiOptions: List<String>,
         onKondisiChange: (String) -> Unit,
         keterangan: String,
         onKeteranganChange: (String) -> Unit,
         imageBitmap: Bitmap?,
         onImageCapture: (Bitmap) -> Unit
     ) {
-        var expanded by remember { mutableStateOf(false) }
-
+        val radioOptions = listOf("BAIK", "TIDAK BAIK")
         val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
             bitmap?.let { onImageCapture(it) }
         }
 
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(text = item, fontSize = 16.sp)
+                Text(
+                    text = item,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center, // <--- ini bagian penting
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextField(
-                        value = if (kondisi.isNotBlank()) kondisi else "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Kondisi") },
-                        placeholder = { Text("Pilih Kondisi") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        colors = ExposedDropdownMenuDefaults.textFieldColors()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        kondisiOptions.forEach { label ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    onKondisiChange(label)
-                                    expanded = false
-                                }
+                    radioOptions.forEach { option ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = kondisi == option,
+                                onClick = { onKondisiChange(option) }
                             )
+                            Text(text = option)
                         }
                     }
                 }
 
-                if (kondisi == "CUKUP" || kondisi == "TIDAK BAIK") {
+                if (kondisi == "TIDAK BAIK") {
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = keterangan,
@@ -290,6 +391,7 @@ class ChecklistActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(Color.Gray.copy(alpha = 0.1f))
                             .clickable { cameraLauncher.launch(null) },
                         contentAlignment = Alignment.Center
@@ -298,6 +400,7 @@ class ChecklistActivity : ComponentActivity() {
                             Image(
                                 bitmap = imageBitmap.asImageBitmap(),
                                 contentDescription = "Hasil Foto",
+                                contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {

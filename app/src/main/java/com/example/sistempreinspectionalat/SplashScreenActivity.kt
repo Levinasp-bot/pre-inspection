@@ -11,12 +11,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 
 class SplashScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Cek apakah user sudah login dari SharedPreferences
         val isLoggedIn = getSharedPreferences("user_prefs", MODE_PRIVATE)
             .getBoolean("is_logged_in", false)
 
@@ -36,20 +38,33 @@ class SplashScreenActivity : ComponentActivity() {
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
     LaunchedEffect(Unit) {
-        delay(2000L) // Delay 2 detik
+        delay(2000L)
         onTimeout()
     }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFF0066B3) // Biru tua
+        color = Color(0xFF0066B3)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = "Selamat Datang!",
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White // Warna teks agar kontras dengan latar biru tua
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "Logo",
+                    modifier = Modifier.size(100.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "???????",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White
+                )
+            }
         }
     }
 }

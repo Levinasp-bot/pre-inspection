@@ -1,9 +1,11 @@
 package com.example.sistempreinspectionalat
 
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,7 +15,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +30,9 @@ import java.util.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.input.pointer.pointerInput
 
@@ -58,175 +62,184 @@ class PreInspectionActivity : ComponentActivity() {
 @Composable
 fun PreInspectionScreen(onNext: (String, String, String) -> Unit) {
     val context = LocalContext.current
-
     val darkBlue = Color(0xFF0066B3)
-    val lightBlue = Color(0xFFE9F3FC)
+    val white = Color.White
 
     var selectedDate by remember { mutableStateOf("") }
-
-    val shiftOptions = listOf("Shift 1", "Shift 2", "Shift 3")
     var selectedShift by remember { mutableStateOf("") }
-
-    val alatList = remember { mutableStateListOf<String>() }
     var selectedAlat by remember { mutableStateOf("") }
 
-    // Ambil alat dari Firestore
+    val shiftOptions = listOf("Shift 1", "Shift 2", "Shift 3")
+
+    val alatList = remember { mutableStateListOf<String>() }
+    var alatExpanded by remember { mutableStateOf(false) }
+    var shiftExpanded by remember { mutableStateOf(false) }
+
+    // ⏱ Ambil data alat dari Firestore
     LaunchedEffect(true) {
         FirebaseFirestore.getInstance().collection("alat")
             .get()
             .addOnSuccessListener { result ->
                 alatList.clear()
                 for (document in result) {
-                    document.getString("kode_alat")?.let { alatList.add(it) }
+                    val kode = document.getString("kode_alat")
+                    Log.d("PreInspection", "Alat ditemukan: $kode") // ✅ Tambahkan log
+                    if (!kode.isNullOrEmpty()) alatList.add(kode)
                 }
+                Log.d("PreInspection", "Total alat: ${alatList.size}")
+            }
+            .addOnFailureListener {
+                Log.e("PreInspection", "Gagal ambil data alat", it)
             }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(darkBlue)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Judul di area biru tua
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(darkBlue)
-                    .padding(top = 48.dp, bottom = 24.dp),
-                contentAlignment = Alignment.Center
-            ) {
+    // 🔷 Layout: Header Biru + Konten Rounded Putih
+    Box(modifier = Modifier.fillMaxSize().background(darkBlue)) {
+        // 🔷 HEADER BIRU
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(90.dp)
+                .background(darkBlue)
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = {
+                    (context as? Activity)?.finish()
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "Form Pre-Inspection",
-                    fontSize = 24.sp,
+                    text = "Form Pre Inspection",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
             }
+        }
 
-            // Konten card bawahnya
-            Box(
+        // 🟡 KONTEN PUTIH ROUNDED MULAI DARI BAWAH HEADER
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 80.dp), // ⬅️ Dorong ke bawah supaya rounded terlihat
+            color = white,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(lightBlue, shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                // 📅 Tanggal
+                DatePickerBox(
+                    selectedDate = selectedDate,
+                    onDateSelected = { selectedDate = it }
+                )
+
+                // 🔽 Kode Alat
+                ExposedDropdownMenuBox(
+                    expanded = alatExpanded,
+                    onExpandedChange = { alatExpanded = !alatExpanded }
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // === DatePickerTextField (klik muncul kalender) ===
-                        DatePickerBox(
-                            selectedDate = selectedDate,
-                            onDateSelected = { selectedDate = it }
+                    OutlinedTextField(
+                        value = selectedAlat,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Kode Alat") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = alatExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = darkBlue,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedTextColor = darkBlue,
+                            unfocusedTextColor = darkBlue,
+                            focusedLabelColor = Color.Gray,
+                            unfocusedLabelColor = Color.Gray,
+                            cursorColor = darkBlue
                         )
-
-                        // === Pilih Shift Dropdown ===
-                        var shiftExpanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(
-                            expanded = shiftExpanded,
-                            onExpandedChange = { shiftExpanded = !shiftExpanded }
-                        ) {
-                            TextField(
-                                value = selectedShift,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Pilih Shift") },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth(),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
-                                    focusedTextColor = darkBlue,
-                                    unfocusedTextColor = darkBlue,
-                                    focusedLabelColor = darkBlue,
-                                    unfocusedLabelColor = darkBlue,
-                                    focusedIndicatorColor = darkBlue,
-                                    unfocusedIndicatorColor = darkBlue,
-                                    cursorColor = darkBlue
-                                )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = alatExpanded,
+                        onDismissRequest = { alatExpanded = false }
+                    ) {
+                        alatList.forEach { alat ->
+                            DropdownMenuItem(
+                                text = { Text(alat) },
+                                onClick = {
+                                    selectedAlat = alat
+                                    alatExpanded = false
+                                }
                             )
-                            ExposedDropdownMenu(
-                                expanded = shiftExpanded,
-                                onDismissRequest = { shiftExpanded = false }
-                            ) {
-                                shiftOptions.forEach { shift ->
-                                    DropdownMenuItem(
-                                        text = { Text(shift) },
-                                        onClick = {
-                                            selectedShift = shift
-                                            shiftExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        // === Pilih Alat Dropdown ===
-                        var alatExpanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(
-                            expanded = alatExpanded,
-                            onExpandedChange = { alatExpanded = !alatExpanded }
-                        ) {
-                            TextField(
-                                value = selectedAlat,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Pilih Alat") },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth(),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
-                                    focusedTextColor = darkBlue,
-                                    unfocusedTextColor = darkBlue,
-                                    focusedLabelColor = darkBlue,
-                                    unfocusedLabelColor = darkBlue,
-                                    focusedIndicatorColor = darkBlue,
-                                    unfocusedIndicatorColor = darkBlue,
-                                    cursorColor = darkBlue
-                                )
-                            )
-                            ExposedDropdownMenu(
-                                expanded = alatExpanded,
-                                onDismissRequest = { alatExpanded = false }
-                            ) {
-                                alatList.forEach { alat ->
-                                    DropdownMenuItem(
-                                        text = { Text(alat) },
-                                        onClick = {
-                                            selectedAlat = alat
-                                            alatExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        // Tombol Next
-                        Button(
-                            onClick = {
-                                if (selectedDate.isEmpty() || selectedShift.isEmpty() || selectedAlat.isEmpty()) {
-                                    Toast.makeText(context, "Lengkapi semua field!", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    onNext(selectedDate, selectedShift, selectedAlat)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = darkBlue)
-                        ) {
-                            Text("Next", color = Color.White)
                         }
                     }
+                }
+
+                // 🔽 Shift
+                ExposedDropdownMenuBox(
+                    expanded = shiftExpanded,
+                    onExpandedChange = { shiftExpanded = !shiftExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedShift,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Shift") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shiftExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = darkBlue,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedTextColor = darkBlue,
+                            unfocusedTextColor = darkBlue,
+                            focusedLabelColor = Color.Gray,
+                            unfocusedLabelColor = Color.Gray,
+                            cursorColor = darkBlue
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = shiftExpanded,
+                        onDismissRequest = { shiftExpanded = false }
+                    ) {
+                        shiftOptions.forEach { shift ->
+                            DropdownMenuItem(
+                                text = { Text(shift) },
+                                onClick = {
+                                    selectedShift = shift
+                                    shiftExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // 🔘 Tombol Selanjutnya
+                Button(
+                    onClick = {
+                        if (selectedDate.isEmpty() || selectedShift.isEmpty() || selectedAlat.isEmpty()) {
+                            Toast.makeText(context, "Lengkapi semua field!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            onNext(selectedDate, selectedShift, selectedAlat)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = darkBlue)
+                ) {
+                    Text("Selanjutnya", fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }

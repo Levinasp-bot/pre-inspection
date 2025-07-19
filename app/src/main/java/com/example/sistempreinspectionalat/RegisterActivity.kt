@@ -71,7 +71,7 @@ fun RegisterScreen() {
             )
 
             Text(
-                text = "SI-PRILA",
+                text = "????",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -227,15 +227,17 @@ fun registerUser(
     val db = FirebaseFirestore.getInstance()
 
     auth.createUserWithEmailAndPassword(email, password)
-        .addOnSuccessListener {
-            val userId = it.user?.uid
-            val data = hashMapOf(
-                "name" to name,
-                "email" to email,
-                "nipp" to nipp
-            )
+        .addOnSuccessListener { authResult ->
+            val userId = authResult.user?.uid
 
             if (userId != null) {
+                val data = hashMapOf(
+                    "uid" to userId, // ⬅️ Tambahkan ini
+                    "name" to name,
+                    "email" to email,
+                    "nipp" to nipp
+                )
+
                 db.collection("users").document(userId)
                     .set(data)
                     .addOnSuccessListener {
@@ -252,3 +254,4 @@ fun registerUser(
             onResult(false, "Registrasi gagal: ${it.localizedMessage}")
         }
 }
+

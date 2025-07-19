@@ -64,12 +64,17 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("com.google.firebase:firebase-auth-ktx") // Untuk otentikasi
-    implementation("com.google.firebase:firebase-firestore-ktx") // Untuk Firestore
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("com.google.firebase:firebase-messaging:23.4.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
+    // build.gradle (:app)
+    implementation ("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
+
 }
