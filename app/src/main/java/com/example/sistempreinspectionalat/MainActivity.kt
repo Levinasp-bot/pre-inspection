@@ -72,13 +72,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     // Ambil data checklist
     LaunchedEffect(Unit) {
         try {
-            val result = firestore.collection("checklist").get().await()
-            val count = result.documents.count { doc ->
-                doc.data?.any { entry ->
-                    val value = entry.value as? String ?: return@any false
-                    value.equals("CUKUP", ignoreCase = true) || value.equals("TIDAK BAIK", ignoreCase = true)
-                } == true
-            }
+            val result = firestore.collection("outstanding")
+                .whereEqualTo("outstanding", true)
+                .get()
+                .await()
+
+            val count = result.size() // jumlah dokumen yang memenuhi filter
             outstandingCount = count
         } catch (e: Exception) {
             e.printStackTrace()

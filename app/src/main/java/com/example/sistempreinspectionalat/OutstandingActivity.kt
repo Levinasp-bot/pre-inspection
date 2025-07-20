@@ -80,6 +80,7 @@ import androidx.compose.ui.platform.LocalContext
 
 class OutstandingActivity : ComponentActivity() {
     private val cloudinaryUrl = "https://api.cloudinary.com/v1_1/dutgwdhss/image/upload"
+    val darkBlue = Color(0xFF0066B3)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,6 +104,7 @@ class OutstandingActivity : ComponentActivity() {
         val perbaikanKeterangan = remember { mutableStateOf("") }
         val perbaikanFotoUri = remember { mutableStateOf<Uri?>(null) }
         val context = LocalContext.current
+        val reloadTrigger = remember { mutableStateOf(false) }
 
         val imageLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
@@ -110,8 +112,8 @@ class OutstandingActivity : ComponentActivity() {
             perbaikanFotoUri.value = uri
         }
 
-        LaunchedEffect(Unit) {
-            firestore.collection("alat")
+        LaunchedEffect(reloadTrigger.value) {
+        firestore.collection("alat")
                 .get()
                 .addOnSuccessListener { result ->
                     for (doc in result) {
@@ -127,18 +129,26 @@ class OutstandingActivity : ComponentActivity() {
                 .addOnSuccessListener { result ->
                     for (doc in result) {
                         val data = doc.data
-                        val item = mapOf(
+                        val item = mutableMapOf<String, Any>(
                             "kode_alat" to (data["kode_alat"] ?: ""),
                             "tanggal" to (data["tanggal"] ?: ""),
                             "shift" to (data["shift"] ?: ""),
                             "item" to (data["item"] ?: ""),
                             "kondisi" to (data["kondisi"] ?: ""),
                             "keterangan" to (data["keterangan"] ?: ""),
-                            "foto_url" to (data["gambar"] ?: ""),
-                            "status_perbaikan" to (data["status_perbaikan"] ?: "") // ⬅️ tambahkan ini
+                            "gambar" to (data["gambar"] ?: ""),
+                            "status_perbaikan" to (data["status_perbaikan"] ?: "")
                         )
 
+                        // ⬇️ Tambahkan semua field dinamis
+                        for ((key, value) in data) {
+                            if (key.startsWith("gambar_perbaikan_") || key.startsWith("keterangan_perbaikan_")) {
+                                item[key] = value ?: ""
+                            }
+                        }
+
                         checklistList.add(item)
+
                     }
                 }
         }
@@ -157,18 +167,17 @@ class OutstandingActivity : ComponentActivity() {
                 ) {
                     items(checklistList) { checklist ->
                         val keteranganRevisi = remember { mutableStateOf("") }
-                        val kondisi = checklist["kondisi"]?.toString() ?: ""
                         val statusPerbaikan = checklist["status_perbaikan"]?.toString() ?: ""
 
-                        val bgColor = when (statusPerbaikan) {
-                            "menunggu persetujuan manager" -> Color.Yellow.copy(alpha = 0.3f)
-                            else -> Color.Red.copy(alpha = 0.2f)
+                        val bgColor = when {
+                            statusPerbaikan.startsWith("menunggu", ignoreCase = true) -> Color.Yellow.copy(alpha = 0.3f)
+                            statusPerbaikan.startsWith("perlu", ignoreCase = true) -> Color.Red.copy(alpha = 0.2f)
+                            else -> Color.White
                         }
 
                         val kodeAlat = checklist["kode_alat"]?.toString() ?: ""
                         val alatInfo = alatMap[kodeAlat]
                         val namaAlat = alatInfo?.get("nama")?.toString() ?: ""
-                        val lokasi = alatInfo?.get("lokasi")?.toString() ?: ""
 
                         val kodeNamaAlat = if (namaAlat.isNotBlank()) {
                             "$kodeAlat - $namaAlat"
@@ -209,11 +218,20 @@ class OutstandingActivity : ComponentActivity() {
                                     fontWeight = FontWeight.Medium
                                 )
 
+                                Text(
+                                    text = "Status Perbaikan: ${checklist["status_perbaikan"]}",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+
                                 if ((checklist["keterangan"] as? String)?.isNotBlank() == true) {
-                                    Text(
-                                        text = "Keterangan: ${checklist["keterangan"]}",
-                                        fontSize = 14.sp
-                                    )
+                                    val keteranganPerbaikan = getLatestKeteranganField(checklist)
+                                    if (!keteranganPerbaikan.isNullOrBlank()) {
+                                        Text(
+                                            text = "Keterangan: $keteranganPerbaikan",
+                                            fontSize = 14.sp
+                                        )
+                                    }
                                 }
 
                                 if (statusPerbaikan == "perlu perbaikan PT BIMA") {
@@ -295,12 +313,16 @@ class OutstandingActivity : ComponentActivity() {
                                                                 val docId = doc.id
 
                                                                 fun updateFirestore(imageUrl: String?) {
+                                                                    val index = getNextPerbaikanRevisionIndex(doc.data ?: emptyMap())
+                                                                    val nextFieldImage = "gambar_perbaikan_$index"
+                                                                    val nextFieldText = "keterangan_perbaikan_$index"
+
                                                                     val updateData = mutableMapOf<String, Any>(
-                                                                        "keterangan_perbaikan" to perbaikanKeterangan.value,
-                                                                        "status_perbaikan" to "menunggu konfirmasi operator"
+                                                                        nextFieldText to perbaikanKeterangan.value,
+                                                                        "status_perbaikan" to "menunggu konfirmasi operator" // atau status lain sesuai kebutuhan
                                                                     )
                                                                     imageUrl?.let {
-                                                                        updateData["gambar_perbaikan"] = it
+                                                                        updateData[nextFieldImage] = it
                                                                     }
 
                                                                     Log.d("UpdateFirestore", "Data yang dikirim: $updateData")
@@ -314,14 +336,15 @@ class OutstandingActivity : ComponentActivity() {
                                                                         .addOnFailureListener {
                                                                             Log.e("UpdateFirestore", "Gagal update dokumen: ${it.message}")
                                                                         }
-
+                                                                    checklistList.clear()
+                                                                    reloadTrigger.value = !reloadTrigger.value
                                                                     // Kirim notifikasi email
                                                                     val json = JSONObject().apply {
                                                                         put("kode_alat", kodeAlat)
                                                                         put("tanggal", checklist["tanggal"])
                                                                         put("item", checklist["item"])
-                                                                        put("keterangan_perbaikan", perbaikanKeterangan.value)
-                                                                        put("gambar_perbaikan", imageUrl ?: "")
+                                                                        put("keterangan_perbaikan_0", perbaikanKeterangan.value)
+                                                                        put("gambar_perbaikan_0", imageUrl ?: "")
                                                                         put("operator_email", doc.getString("operator_email") ?: "")
                                                                     }
 
@@ -454,6 +477,27 @@ class OutstandingActivity : ComponentActivity() {
                                         Text("Lihat Foto")
                                     }
 
+                                    if (showImage.value) {
+                                        AlertDialog(
+                                            onDismissRequest = { showImage.value = false },
+                                            confirmButton = {
+                                                TextButton(onClick = { showImage.value = false }) {
+                                                    Text("Tutup")
+                                                }
+                                            },
+                                            text = {
+                                                AsyncImage(
+                                                    model = fotoUrl,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(8.dp)),
+                                                    contentScale = ContentScale.Fit
+                                                )
+                                            }
+                                        )
+                                    }
+
                                     Spacer(modifier = Modifier.height(8.dp))
 
                                     OutlinedButton(
@@ -491,8 +535,8 @@ class OutstandingActivity : ComponentActivity() {
                                                                 val docId = doc.id
 
                                                                 val index = getNextPerbaikanRevisionIndex(doc.data ?: emptyMap())
-                                                                val nextFieldImage = "gambar_perbaikan_rev_$index"
-                                                                val nextFieldText = "keterangan_perbaikan_rev_$index"
+                                                                val nextFieldImage = "gambar_perbaikan_$index"
+                                                                val nextFieldText = "keterangan_perbaikan_$index"
 
                                                                 val uri = perbaikanFotoUri.value
                                                                 if (uri != null) {
@@ -510,6 +554,8 @@ class OutstandingActivity : ComponentActivity() {
                                                                             showDialog.value = false
                                                                             keteranganRevisi.value = ""
                                                                             perbaikanFotoUri.value = null
+                                                                            checklistList.clear()
+                                                                            reloadTrigger.value = !reloadTrigger.value
                                                                         }
                                                                     }
                                                                 } else {
@@ -521,9 +567,12 @@ class OutstandingActivity : ComponentActivity() {
                                                                     showDialog.value = false
                                                                     keteranganRevisi.value = ""
                                                                     perbaikanFotoUri.value = null
+                                                                    checklistList.clear()
+                                                                    reloadTrigger.value = !reloadTrigger.value
                                                                 }
                                                             }
                                                         }
+
                                                     }
                                                 ) {
                                                     Text("Submit")
@@ -618,16 +667,23 @@ class OutstandingActivity : ComponentActivity() {
                                                                 checklistList.clear()
                                                                 for (doc2 in result2) {
                                                                     val data2 = doc2.data
-                                                                    val item2 = mapOf(
+                                                                    val item2 = mutableMapOf<String, Any>(
                                                                         "kode_alat" to (data2["kode_alat"] ?: ""),
                                                                         "tanggal" to (data2["tanggal"] ?: ""),
                                                                         "shift" to (data2["shift"] ?: ""),
                                                                         "item" to (data2["item"] ?: ""),
                                                                         "kondisi" to (data2["kondisi"] ?: ""),
                                                                         "keterangan" to (data2["keterangan"] ?: ""),
-                                                                        "foto_url" to (data2["gambar"] ?: ""),
+                                                                        "gambar" to (data2["gambar"] ?: ""),
                                                                         "status_perbaikan" to (data2["status_perbaikan"] ?: "")
                                                                     )
+
+                                                                    // Tambahkan field dinamis dari gambar_perbaikan_ dan keterangan_perbaikan_
+                                                                    for ((key, value) in data2) {
+                                                                        if (key.startsWith("gambar_perbaikan_") || key.startsWith("keterangan_perbaikan_")) {
+                                                                            item2[key] = value ?: ""
+                                                                        }
+                                                                    }
                                                                     checklistList.add(item2)
                                                                 }
                                                             }
@@ -646,12 +702,240 @@ class OutstandingActivity : ComponentActivity() {
                                         Text("Konfirmasi Perbaikan")
                                     }
                                 }
+
+                                if (statusPerbaikan == "perlu perbaikan ulang") {
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    OutlinedButton(
+                                        onClick = { showImage.value = true },
+                                        shape = RoundedCornerShape(50),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = Color.White,
+                                            contentColor = Color(0xFF003366)
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFF003366)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Lihat Foto")
+                                    }
+
+                                    if (showImage.value) {
+                                        AlertDialog(
+                                            onDismissRequest = { showImage.value = false },
+                                            confirmButton = {
+                                                TextButton(onClick = { showImage.value = false }) {
+                                                    Text("Tutup")
+                                                }
+                                            },
+                                            text = {
+                                                AsyncImage(
+                                                    model = fotoUrl,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(8.dp)),
+                                                    contentScale = ContentScale.Fit
+                                                )
+                                            }
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    OutlinedButton(
+                                        onClick = { showDialog.value = true },
+                                        shape = RoundedCornerShape(50),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = Color.White,
+                                            contentColor = Color(0xFF00695C)
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFF00695C)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Beri Tanggapan")
+                                    }
+
+                                    val isSubmitting = remember { mutableStateOf(false) }
+                                    if (isSubmitting.value) {
+                                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                                    }
+
+                                    if (showDialog.value) {
+                                        AlertDialog(
+                                            onDismissRequest = { showDialog.value = false },
+                                            confirmButton = {
+                                                TextButton(
+                                                    onClick = {
+                                                        showDialog.value = false
+                                                        isSubmitting.value = true
+
+                                                        val firestore = FirebaseFirestore.getInstance()
+                                                        val docRef = firestore.collection("outstanding")
+                                                            .whereEqualTo("kode_alat", kodeAlat)
+                                                            .whereEqualTo("tanggal", checklist["tanggal"])
+                                                            .whereEqualTo("item", checklist["item"])
+                                                            .limit(1)
+
+                                                        docRef.get().addOnSuccessListener { result ->
+                                                            if (!result.isEmpty) {
+                                                                val doc = result.documents[0]
+                                                                val docId = doc.id
+                                                                fun updateFirestore(imageUrl: String?) {
+                                                                    val index = getNextPerbaikanRevisionIndex(doc.data ?: emptyMap())
+                                                                    val nextFieldImage = "gambar_perbaikan_$index"
+                                                                    val nextFieldText = "keterangan_perbaikan_$index"
+
+                                                                    val updateData = mutableMapOf<String, Any>(
+                                                                        nextFieldText to perbaikanKeterangan.value,
+                                                                        "status_perbaikan" to "menunggu konfirmasi operator"
+                                                                    )
+                                                                    imageUrl?.let {
+                                                                        updateData[nextFieldImage] = it
+                                                                    }
+
+                                                                    Log.d("UpdateFirestore", "Data yang dikirim: $updateData")
+
+                                                                    firestore.collection("outstanding").document(docId).update(updateData)
+                                                                        .addOnSuccessListener {
+                                                                            Log.d("UpdateFirestore", "Dokumen berhasil diupdate.")
+                                                                            perbaikanKeterangan.value = ""
+                                                                            perbaikanFotoUri.value = null
+                                                                            checklistList.clear()
+                                                                            reloadTrigger.value = !reloadTrigger.value
+                                                                        }
+                                                                        .addOnFailureListener {
+                                                                            Log.e("UpdateFirestore", "Gagal update dokumen: ${it.message}")
+                                                                        }
+
+                                                                    val json = JSONObject().apply {
+                                                                        put("kode_alat", kodeAlat)
+                                                                        put("tanggal", checklist["tanggal"])
+                                                                        put("item", checklist["item"])
+                                                                        put("keterangan_perbaikan_0", perbaikanKeterangan.value)
+                                                                        put("gambar_perbaikan_0", imageUrl ?: "")
+                                                                        put("operator_email", doc.getString("operator_email") ?: "")
+                                                                    }
+
+                                                                    val client = OkHttpClient()
+                                                                    val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json.toString())
+                                                                    val request = Request.Builder()
+                                                                        .url("https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec")
+                                                                        .post(requestBody)
+                                                                        .build()
+
+                                                                    client.newCall(request).enqueue(object : Callback {
+                                                                        override fun onFailure(call: Call, e: IOException) {
+                                                                            Log.e("EmailNotif", "Gagal kirim email", e)
+                                                                            isSubmitting.value = false
+                                                                        }
+
+                                                                        override fun onResponse(call: Call, response: Response) {
+                                                                            Log.d("EmailNotif", "Email berhasil dikirim: ${response.body?.string()}")
+                                                                            isSubmitting.value = false
+                                                                        }
+                                                                    })
+                                                                }
+
+                                                                val uri = perbaikanFotoUri.value
+                                                                if (uri != null) {
+                                                                    val bitmap = uriToBitmap(this@OutstandingActivity, uri)
+                                                                    if (bitmap != null) {
+                                                                        uploadImageToCloudinary(bitmap) { imageUrl ->
+                                                                            if (imageUrl != null) {
+                                                                                updateFirestore(imageUrl)
+                                                                            } else {
+                                                                                Log.e("CloudinaryUpload", "Upload gagal, URL null")
+                                                                                updateFirestore(null)
+                                                                            }
+                                                                        }
+                                                                    } else {
+                                                                        Log.e("CloudinaryUpload", "Gagal konversi URI ke Bitmap")
+                                                                        updateFirestore(null)
+                                                                    }
+                                                                } else {
+                                                                    updateFirestore(null)
+                                                                }
+                                                            } else {
+                                                                isSubmitting.value = false
+                                                            }
+                                                        }
+                                                    }
+
+                                                ) {
+                                                    Text("Submit")
+                                                }
+                                            },
+                                            dismissButton = {
+                                                TextButton(onClick = {
+                                                    showDialog.value = false
+                                                    perbaikanKeterangan.value = ""
+                                                    perbaikanFotoUri.value = null
+                                                }) {
+                                                    Text("Batal")
+                                                }
+                                            },
+                                            text = {
+                                                Column {
+                                                    Text("Upload foto perbaikan dan isi keterangan:")
+
+                                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                                    Card(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(150.dp)
+                                                            .clickable { imageLauncher.launch("image/*") },
+                                                        shape = RoundedCornerShape(12.dp),
+                                                        border = BorderStroke(1.dp, Color.Gray),
+                                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8))
+                                                    ) {
+                                                        Box(
+                                                            contentAlignment = Alignment.Center,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        ) {
+                                                            if (perbaikanFotoUri.value != null) {
+                                                                AsyncImage(
+                                                                    model = perbaikanFotoUri.value,
+                                                                    contentDescription = "Foto terpilih",
+                                                                    contentScale = ContentScale.Crop,
+                                                                    modifier = Modifier.fillMaxSize()
+                                                                )
+                                                            } else {
+                                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                    Icon(
+                                                                        imageVector = Icons.Default.CameraAlt,
+                                                                        contentDescription = "Upload Foto",
+                                                                        tint = Color.Gray,
+                                                                        modifier = Modifier.size(40.dp)
+                                                                    )
+                                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                                    Text("Klik untuk pilih foto", color = Color.Gray)
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+
+                                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                                    androidx.compose.material3.OutlinedTextField(
+                                                        value = perbaikanKeterangan.value,
+                                                        onValueChange = { perbaikanKeterangan.value = it },
+                                                        placeholder = { Text("Masukkan keterangan perbaikan...") },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+
                             }
                         }
                     }
                 }
             }
         )
+
     }
 
     fun uriToBitmap(context: Context, uri: Uri): Bitmap? {
@@ -716,21 +1000,61 @@ class OutstandingActivity : ComponentActivity() {
         })
     }
 
-    fun getLatestImageField(document: Map<String, Any>): String? {
-        val fields = document.keys
-        val imageFields = fields.filter {
-            it.startsWith("gambar_perbaikan_rev_") || it.startsWith("gambar_rev_") || it == "gambar_perbaikan"
-        }.sorted()
-        return imageFields.lastOrNull()?.let { document[it] as? String }
+    fun getLatestKeteranganField(document: Map<String, Any>): String? {
+        val statusPerbaikan = document["status_perbaikan"]?.toString() ?: ""
+
+        return if (statusPerbaikan == "perlu perbaikan PT BIMA") {
+            document["keterangan"] as? String
+        } else {
+            val textFields = document.keys
+                .filter { it.startsWith("keterangan_perbaikan_") }
+                .mapNotNull {
+                    val index = it.substringAfterLast("_").toIntOrNull()
+                    index?.let { idx -> Pair(idx, it) }
+                }
+                .sortedBy { it.first }
+
+            val latestField = textFields.lastOrNull()?.second
+            latestField?.let { document[it] as? String }
+        }
     }
 
-    fun getNextRevisionIndex(document: Map<String, Any>): Int {
-        val fields = document.keys
-        return fields.count { it.startsWith("gambar_rev_") }
+    fun getLatestImageField(document: Map<String, Any>): String? {
+        val statusPerbaikan = document["status_perbaikan"]?.toString() ?: ""
+        Log.d("ImageDebug", "Status perbaikan: $statusPerbaikan")
+
+        val allKeys = document.keys
+        Log.d("ImageDebug", "Semua key di dokumen: $allKeys")
+
+        val imageFields = allKeys
+            .filter { it.startsWith("gambar_perbaikan_") }
+            .mapNotNull {
+                val indexStr = it.substringAfterLast("_")
+                val index = indexStr.toIntOrNull()
+                if (index != null) {
+                    Log.d("ImageDebug", "✔️ Field valid: $it -> index $index")
+                    Pair(index, it)
+                } else {
+                    Log.d("ImageDebug", "❌ Gagal parsing index dari: $it")
+                    null
+                }
+            }
+            .sortedBy { it.first }
+
+        val latestField = imageFields.lastOrNull()?.second
+        val latestImageUrl = latestField?.let { document[it] as? String }
+        val fallback = document["gambar"] as? String
+
+        Log.d("ImageDebug", "Field gambar_perbaikan ditemukan: $imageFields")
+        Log.d("ImageDebug", "Field terbaru: $latestField, URL: $latestImageUrl")
+        Log.d("ImageDebug", "Fallback 'gambar': $fallback")
+
+        return latestImageUrl ?: fallback
     }
+
 
     fun getNextPerbaikanRevisionIndex(document: Map<String, Any>): Int {
         val fields = document.keys
-        return fields.count { it.startsWith("gambar_perbaikan_rev_") }
+        return fields.count { it.startsWith("gambar_perbaikan_") }
     }
 }

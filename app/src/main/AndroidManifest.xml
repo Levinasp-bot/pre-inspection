@@ -37,6 +37,9 @@
             android:name=".LaporanActivity"
             android:exported="false" />
         <activity
+            android:name=".DetailAlatActivity"
+            android:exported="false" />
+        <activity
         android:name=".DetailLaporanActivity"
         android:exported="false" />
         <activity

@@ -4,7 +4,9 @@ import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -51,20 +53,18 @@ fun AlatScreen() {
                     alatList.add(
                         mapOf(
                             "kode_alat" to (doc.getString("kode_alat") ?: ""),
-                            "nama_alat" to (doc.getString("nama_alat") ?: ""),
-                            "status" to (doc.getString("status") ?: ""),
-                            "tindak_lanjut" to (doc.getString("tindak_lanjut") ?: "Tidak ada")
+                            "nama" to (doc.getString("nama") ?: ""),
+                            "status" to (doc.getString("status") ?: "")
                         )
                     )
                 }
             }
     }
 
-    // Filter hasil pencarian
     val filteredList = alatList.filter {
         val query = searchText.lowercase()
         it["kode_alat"]?.lowercase()?.contains(query) == true ||
-                it["nama_alat"]?.lowercase()?.contains(query) == true
+                it["nama"]?.lowercase()?.contains(query) == true
     }
 
     Box(modifier = Modifier.fillMaxSize().background(darkBlue)) {
@@ -92,19 +92,15 @@ fun AlatScreen() {
                 }
             }
 
-            // Surface putih menimpa biru
             Surface(
-                modifier = Modifier
-                    .fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 color = Color.White,
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
+                Column(modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
                 ) {
-                    // Search bar aktif
                     OutlinedTextField(
                         value = searchText,
                         onValueChange = { searchText = it },
@@ -125,23 +121,34 @@ fun AlatScreen() {
                         singleLine = true
                     )
 
-                    // List alat
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(filteredList) { alat ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
+                            OutlinedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val intent = android.content.Intent(
+                                            context,
+                                            Class.forName("com.example.sistempreinspectionalat.DetailAlatActivity")
+                                        )
+                                        intent.putExtra("kode_alat", alat["kode_alat"])
+                                        context.startActivity(intent)
+                                    },
                                 shape = RoundedCornerShape(12.dp),
-                                elevation = CardDefaults.cardElevation(4.dp)
+                                colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
+                                border = BorderStroke(1.dp, darkBlue)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Text(
                                         text = "${alat["kode_alat"]} (${alat["nama"]})",
+                                        color = darkBlue,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp
                                     )
                                     Text(
-                                        text = "Status:",
-                                        fontWeight = FontWeight.SemiBold,
+                                        text = "Status: ${alat["status"] ?: "-"}",
+                                        color = darkBlue,
+                                        fontWeight = FontWeight.Medium,
                                         fontSize = 13.sp
                                     )
                                 }
@@ -153,3 +160,4 @@ fun AlatScreen() {
         }
     }
 }
+
