@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "230662936652",
-    "project_id": "pre-inspection-alat",
-    "storage_bucket": "pre-inspection-alat.firebasestorage.app"
+    "project_number": "339459357509",
+    "project_id": "pre-inspection-alat-spmt",
+    "storage_bucket": "pre-inspection-alat-spmt.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:230662936652:android:87916d8df059f26f067ce9",
+        "mobilesdk_app_id": "1:339459357509:android:4794397db59e38492b1c2c",
         "android_client_info": {
           "package_name": "com.example.sistempreinspectionalat"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCImNuZ8qNMvttqOsTRG4wc-mXT4w9Rrng"
+          "current_key": "AIzaSyAkkmCUMX5hl_P4xDFpbOQossejD461jSQ"
         }
       ],
       "services": {
