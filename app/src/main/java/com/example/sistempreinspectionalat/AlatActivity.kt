@@ -38,11 +38,10 @@ class AlatActivity : ComponentActivity() {
 @Composable
 fun AlatScreen() {
     val context = LocalContext.current
-    val darkBlue = Color(0xFF0066B3)
+    val darkBlue = Color(0xFF003366)
     val alatList = remember { mutableStateListOf<Map<String, String>>() }
     var searchText by remember { mutableStateOf("") }
 
-    // Fetch data
     LaunchedEffect(Unit) {
         val firestore = FirebaseFirestore.getInstance()
         firestore.collection("alat")
@@ -69,7 +68,6 @@ fun AlatScreen() {
 
     Box(modifier = Modifier.fillMaxSize().background(darkBlue)) {
         Column {
-            // Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

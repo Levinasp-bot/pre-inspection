@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.example.sistempreinspectionalat.ui.theme.SistemPreinspectionAlatTheme
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.Call
@@ -86,7 +88,7 @@ class ChecklistActivity : ComponentActivity() {
         val coroutineScope = rememberCoroutineScope()
         val auth = FirebaseAuth.getInstance()
         val userName = remember { mutableStateOf("") }
-        val darkBlue = Color(0xFF0066B3)
+        val darkBlue = Color(0xFF003366)
         val keteranganMap = remember { mutableStateMapOf<String, String>() }
         val fotoMap = remember { mutableStateMapOf<String, Bitmap?>() }
         val preInspectionItems = remember { mutableStateListOf<String>() }
@@ -295,7 +297,9 @@ class ChecklistActivity : ComponentActivity() {
                                                                     "shift" to shift,
                                                                     "status_perbaikan" to "menunggu tanggapan PT BIMA",
                                                                     "tanggal" to tanggal,
-                                                                    "status" to statusAlat.value
+                                                                    "status" to statusAlat.value,
+                                                                    "timestamp_laporan" to FieldValue.serverTimestamp()
+
                                                                 )
 
                                                                 firestore.collection("outstanding")
@@ -321,7 +325,8 @@ class ChecklistActivity : ComponentActivity() {
                                                             "shift" to shift,
                                                             "status_perbaikan" to "menunggu tanggapan PT BIMA",
                                                             "tanggal" to tanggal,
-                                                            "status" to statusAlat.value
+                                                            "status" to statusAlat.value,
+                                                            "timestamp_laporan" to FieldValue.serverTimestamp()
                                                         )
 
                                                         firestore.collection("outstanding")
@@ -346,6 +351,7 @@ class ChecklistActivity : ComponentActivity() {
                                                     val jsonBody = JSONObject().apply {
                                                         put("kode_alat", kodeAlat)
                                                         put("tanggal", tanggal)
+                                                        put("shift", shift)
                                                         put("nama", userName.value)
                                                         put("checklist", JSONArray(itemTidakNormal))
                                                         put("keterangan", keteranganGabungan)
@@ -409,7 +415,6 @@ class ChecklistActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ChecklistItemRow(
         item: String,
@@ -420,6 +425,24 @@ class ChecklistActivity : ComponentActivity() {
         imageBitmap: Bitmap?,
         onImageCapture: (Bitmap) -> Unit
     ) {
+        val context = LocalContext.current
+        val showDialog = remember { mutableStateOf(false) }
+
+        val cameraLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.TakePicturePreview()
+        ) { bitmap ->
+            bitmap?.let { onImageCapture(it) }
+        }
+
+        val galleryLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri ->
+            uri?.let {
+                val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+                onImageCapture(bitmap)
+            }
+        }
+
         val radioOptions = when {
             item.contains("oli", ignoreCase = true) -> listOf("YA", "TIDAK")
             item.contains("lampu", ignoreCase = true) -> listOf("NYALA", "TIDAK NYALA")
@@ -431,8 +454,27 @@ class ChecklistActivity : ComponentActivity() {
             else -> listOf("BAIK", "TIDAK BAIK")
         }
 
-        val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-            bitmap?.let { onImageCapture(it) }
+        if (showDialog.value) {
+            AlertDialog(
+                onDismissRequest = { showDialog.value = false },
+                title = { Text("Pilih Sumber Gambar") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        cameraLauncher.launch(null)
+                        showDialog.value = false
+                    }) {
+                        Text("Kamera")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        galleryLauncher.launch("image/*")
+                        showDialog.value = false
+                    }) {
+                        Text("Galeri")
+                    }
+                }
+            )
         }
 
         Card(
@@ -465,7 +507,7 @@ class ChecklistActivity : ComponentActivity() {
                     }
                 }
 
-                if (kondisi == "YA" || kondisi == "TIDAK NYALA" || kondisi == "KOTOR" || kondisi == "TIDAK NORMAL" || kondisi == "TIDAK BERFUNGSI" || kondisi == "TIDAK BAIK" || kondisi == "RUSAK") {
+                if (kondisi in listOf("YA", "TIDAK NYALA", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI", "TIDAK BAIK", "RUSAK")) {
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = keterangan,
@@ -482,7 +524,7 @@ class ChecklistActivity : ComponentActivity() {
                             .height(180.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.Gray.copy(alpha = 0.1f))
-                            .clickable { cameraLauncher.launch(null) },
+                            .clickable { showDialog.value = true },
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageBitmap != null) {
@@ -496,11 +538,11 @@ class ChecklistActivity : ComponentActivity() {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     imageVector = Icons.Default.AddCircle,
-                                    contentDescription = "Kamera",
+                                    contentDescription = "Upload",
                                     modifier = Modifier.size(48.dp),
                                     tint = Color.Gray
                                 )
-                                Text("Ambil Foto", color = Color.Gray)
+                                Text("Ambil atau Pilih Foto", color = Color.Gray)
                             }
                         }
                     }

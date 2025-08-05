@@ -62,7 +62,7 @@ class PreInspectionActivity : ComponentActivity() {
 @Composable
 fun PreInspectionScreen(onNext: (String, String, String) -> Unit) {
     val context = LocalContext.current
-    val darkBlue = Color(0xFF0066B3)
+    val darkBlue = Color(0xFF003366)
     val white = Color.White
 
     var selectedDate by remember { mutableStateOf("") }
@@ -261,7 +261,7 @@ fun DatePickerBox(
             .height(56.dp)
             .border(
                 width = 1.dp,
-                color = Color(0xFF0066B3),
+                color = Color(0xFF003366),
                 shape = RoundedCornerShape(4.dp)
             )
             .background(Color.White, shape = RoundedCornerShape(4.dp))
@@ -282,7 +282,7 @@ fun DatePickerBox(
     ) {
         Text(
             text = if (selectedDate.isEmpty()) "Pilih Tanggal" else selectedDate,
-            color = if (selectedDate.isEmpty()) Color.Gray else Color(0xFF0066B3),
+            color = if (selectedDate.isEmpty()) Color.Gray else Color(0xFF003366),
             fontSize = 16.sp
         )
     }

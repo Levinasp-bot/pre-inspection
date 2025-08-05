@@ -53,14 +53,13 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
-    val darkBlue = Color(0xFF0066B3)
+    val darkBlue = Color(0xFF003366)
     val context = LocalContext.current
     val firestore = FirebaseFirestore.getInstance()
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     var outstandingCount by remember { mutableStateOf(0) }
 
-    // Buat status bar transparan
     val systemUiController = rememberSystemUiController()
     SideEffect {
         systemUiController.setStatusBarColor(
@@ -136,7 +135,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "Menu",
-                        tint = Color(0xFF0066B3)
+                        tint = Color(0xFF003366)
                     )
                 }
 
