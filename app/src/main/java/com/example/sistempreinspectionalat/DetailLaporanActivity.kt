@@ -33,7 +33,6 @@ class DetailLaporanActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Ambil intent extras
         val kodeAlat = intent.getStringExtra("kode_alat") ?: ""
         val tanggal = intent.getStringExtra("tanggal") ?: ""
         val shift = intent.getStringExtra("shift") ?: ""
@@ -84,7 +83,6 @@ fun DetailLaporanScreen(
                 val doc = checklistSnap.documents.first()
                 val dataMap = doc.data ?: emptyMap()
 
-                // Buat map item_statuses dari field yang value-nya "BAIK" atau "TIDAK BAIK"
                 val itemStatuses = dataMap.filter { entry ->
                     val value = entry.value as? String ?: ""
                     (value == "BAIK" || value == "TIDAK BAIK")

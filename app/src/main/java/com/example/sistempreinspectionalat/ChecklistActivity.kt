@@ -265,7 +265,8 @@ class ChecklistActivity : ComponentActivity() {
                                         }
 
                                         val kondisiTidakNormalSet = setOf(
-                                            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK", "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
+                                            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
+                                            "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
                                         )
 
                                         val itemTidakNormal = checklistItems.filter {
@@ -274,129 +275,138 @@ class ChecklistActivity : ComponentActivity() {
 
                                         data["status"] = statusAlat.value
 
+                                        // 🔹 STEP 1: simpan ke checklist
                                         firestore.collection("checklist")
                                             .add(data)
                                             .addOnSuccessListener {
-                                                itemTidakNormal.forEach { item ->
-                                                    val gambar = fotoMap[item]
-                                                    val keterangan = keteranganMap[item] ?: ""
-                                                    val kondisi = kondisiMap[item] ?: "TIDAK DIKETAHUI"
-
-                                                    if (gambar != null) {
-                                                        // Upload gambar ke Cloudinary
-                                                        uploadImageToCloudinary(gambar) { imageUrl ->
-                                                            if (!imageUrl.isNullOrEmpty()) {
-                                                                val dataOutstanding = hashMapOf(
-                                                                    "item" to item,
-                                                                    "gambar" to imageUrl,
-                                                                    "keterangan" to keterangan,
-                                                                    "kode_alat" to kodeAlat,
-                                                                    "kondisi" to kondisi,
-                                                                    "operator" to userName.value,
-                                                                    "outstanding" to true,
-                                                                    "shift" to shift,
-                                                                    "status_perbaikan" to "menunggu tanggapan PT BIMA",
-                                                                    "tanggal" to tanggal,
-                                                                    "status" to statusAlat.value,
-                                                                    "timestamp_laporan" to FieldValue.serverTimestamp()
-
-                                                                )
-
-                                                                firestore.collection("outstanding")
-                                                                    .add(dataOutstanding)
-                                                                    .addOnSuccessListener {
-                                                                        Log.d("Firestore", "Data outstanding berhasil disimpan")
-                                                                    }
-                                                                    .addOnFailureListener {
-                                                                        Log.e("Firestore", "Gagal simpan data outstanding", it)
-                                                                    }
-                                                            }
-                                                        }
-                                                    } else {
-                                                        // Jika tidak ada gambar
-                                                        val dataOutstanding = hashMapOf(
-                                                            "item" to item,
-                                                            "gambar" to "", // kosong jika tidak ada
-                                                            "keterangan" to keterangan,
-                                                            "kode_alat" to kodeAlat,
-                                                            "kondisi" to kondisi,
-                                                            "operator" to userName.value,
-                                                            "outstanding" to true,
-                                                            "shift" to shift,
-                                                            "status_perbaikan" to "menunggu tanggapan PT BIMA",
-                                                            "tanggal" to tanggal,
-                                                            "status" to statusAlat.value,
-                                                            "timestamp_laporan" to FieldValue.serverTimestamp()
-                                                        )
-
-                                                        firestore.collection("outstanding")
-                                                            .add(dataOutstanding)
-                                                            .addOnSuccessListener {
-                                                                Log.d("Firestore", "Data outstanding (tanpa gambar) berhasil disimpan")
-                                                            }
-                                                            .addOnFailureListener {
-                                                                Log.e("Firestore", "Gagal simpan data outstanding", it)
-                                                            }
-                                                    }
-                                                }
-
-                                                Toast.makeText(context, "Checklist berhasil disimpan", Toast.LENGTH_SHORT).show()
-
+                                                Log.d("Checklist", "Berhasil simpan checklist untuk $kodeAlat")
 
                                                 if (itemTidakNormal.isNotEmpty()) {
-                                                    val keteranganGabungan = itemTidakNormal.joinToString("\n") {
-                                                        "- $it: ${keteranganMap[it] ?: "-"}"
+                                                    // 🔹 STEP 2: kalau ada item tidak normal
+                                                    itemTidakNormal.forEach { item ->
+                                                        val gambar = fotoMap[item]
+                                                        val keterangan = keteranganMap[item] ?: ""
+                                                        val kondisi = kondisiMap[item] ?: "TIDAK DIKETAHUI"
+
+                                                        Log.d("Checklist", "Cek outstanding → kode_alat=$kodeAlat, item=$item")
+
+                                                        firestore.collection("outstanding")
+                                                            .whereEqualTo("kode_alat", kodeAlat)
+                                                            .whereEqualTo("item", item)
+                                                            .whereEqualTo("outstanding", true)
+                                                            .get()
+                                                            .addOnSuccessListener { querySnapshot ->
+                                                                if (!querySnapshot.isEmpty) {
+                                                                    val doc = querySnapshot.documents.first()
+                                                                    val statusPerbaikan = doc.getString("status_perbaikan") ?: ""
+                                                                    Log.d("Checklist", "Outstanding ditemukan → status=$statusPerbaikan")
+
+                                                                    if (statusPerbaikan == "menunggu konfirmasi operator") {
+                                                                        val currentData = doc.data ?: emptyMap()
+                                                                        val nextIndex = getNextPerbaikanRevisionIndex(currentData)
+
+                                                                        val updateData = hashMapOf<String, Any>(
+                                                                            "status_perbaikan" to "perlu perbaikan ulang"
+                                                                        )
+
+                                                                        if (gambar != null) {
+                                                                            uploadImageToCloudinary(gambar) { imageUrl ->
+                                                                                if (!imageUrl.isNullOrEmpty()) {
+                                                                                    updateData["gambar_perbaikan_$nextIndex"] = imageUrl
+                                                                                    updateData["keterangan_perbaikan_$nextIndex"] = keterangan
+                                                                                    doc.reference.update(updateData)
+                                                                                    Log.d("Checklist", "Update outstanding revisi → item=$item")
+                                                                                }
+                                                                            }
+                                                                        } else {
+                                                                            updateData["gambar_perbaikan_$nextIndex"] = ""
+                                                                            updateData["keterangan_perbaikan_$nextIndex"] = keterangan
+                                                                            doc.reference.update(updateData)
+                                                                            Log.d("Checklist", "Update outstanding revisi tanpa gambar → item=$item")
+                                                                        }
+                                                                    } else {
+                                                                        Log.d("Checklist", "Outstanding ditemukan tapi status=$statusPerbaikan → dilewati")
+                                                                    }
+                                                                } else {
+                                                                    // Insert baru ke outstanding
+                                                                    Log.d("Checklist", "Outstanding belum ada, buat baru untuk $item")
+
+                                                                    if (gambar != null) {
+                                                                        uploadImageToCloudinary(gambar) { imageUrl ->
+                                                                            if (!imageUrl.isNullOrEmpty()) {
+                                                                                val dataOutstanding = hashMapOf(
+                                                                                    "item" to item,
+                                                                                    "gambar" to imageUrl,
+                                                                                    "keterangan" to keterangan,
+                                                                                    "kode_alat" to kodeAlat,
+                                                                                    "kondisi" to kondisi,
+                                                                                    "operator" to userName.value,
+                                                                                    "outstanding" to true,
+                                                                                    "shift" to shift,
+                                                                                    "status_perbaikan" to "menunggu tanggapan PT BIMA",
+                                                                                    "tanggal" to tanggal,
+                                                                                    "status" to statusAlat.value,
+                                                                                    "timestamp_laporan" to FieldValue.serverTimestamp()
+                                                                                )
+                                                                                firestore.collection("outstanding").add(dataOutstanding)
+                                                                                Log.d("Checklist", "Outstanding baru dibuat untuk $item")
+                                                                            }
+                                                                        }
+                                                                    } else {
+                                                                        val dataOutstanding = hashMapOf(
+                                                                            "item" to item,
+                                                                            "gambar" to "",
+                                                                            "keterangan" to keterangan,
+                                                                            "kode_alat" to kodeAlat,
+                                                                            "kondisi" to kondisi,
+                                                                            "operator" to userName.value,
+                                                                            "outstanding" to true,
+                                                                            "shift" to shift,
+                                                                            "status_perbaikan" to "menunggu tanggapan PT BIMA",
+                                                                            "tanggal" to tanggal,
+                                                                            "status" to statusAlat.value,
+                                                                            "timestamp_laporan" to FieldValue.serverTimestamp()
+                                                                        )
+                                                                        firestore.collection("outstanding").add(dataOutstanding)
+                                                                        Log.d("Checklist", "Outstanding baru dibuat untuk $item tanpa gambar")
+                                                                    }
+                                                                }
+                                                            }
                                                     }
-
-                                                    val jsonBody = JSONObject().apply {
-                                                        put("kode_alat", kodeAlat)
-                                                        put("tanggal", tanggal)
-                                                        put("shift", shift)
-                                                        put("nama", userName.value)
-                                                        put("checklist", JSONArray(itemTidakNormal))
-                                                        put("keterangan", keteranganGabungan)
-                                                        put("status", statusAlat.value) // ✅ tambahan
-                                                    }
-
-                                                    val client = OkHttpClient()
-                                                    val requestBody = RequestBody.create(
-                                                        "application/json; charset=utf-8".toMediaTypeOrNull(),
-                                                        jsonBody.toString()
-                                                    )
-
-                                                    val request = Request.Builder()
-                                                        .url("https://script.google.com/macros/s/AKfycbzZuShOBdWmR9nceO7PmzqjZgf56B1lLVeHO57rGtfs6dHfHaVWqADnRFFdQJkhe_ad/exec") // ganti dengan URL Apps Script kamu
-                                                        .post(requestBody)
-                                                        .build()
-
-                                                    client.newCall(request).enqueue(object : Callback {
-                                                        override fun onFailure(call: Call, e: IOException) {
-                                                            Log.e("NotifikasiEmail", "Gagal kirim notifikasi: ${e.message}")
-                                                        }
-
-                                                        override fun onResponse(call: Call, response: Response) {
-                                                            if (response.isSuccessful) {
-                                                                Log.d("NotifikasiEmail", "Berhasil kirim notifikasi ke email")
-                                                            } else {
-                                                                Log.e("NotifikasiEmail", "Gagal: ${response.body?.string()}")
+                                                } else {
+                                                    // 🔹 STEP 3: kalau semua normal
+                                                    firestore.collection("outstanding")
+                                                        .whereEqualTo("kode_alat", kodeAlat)
+                                                        .get()
+                                                        .addOnSuccessListener { querySnapshot ->
+                                                            for (doc in querySnapshot) {
+                                                                doc.reference.update("status_perbaikan", "menunggu verifikasi manager")
+                                                                Log.d("Checklist", "Update outstanding existing → menunggu verifikasi manager")
                                                             }
                                                         }
-                                                    })
-                                                    val intent = Intent(this@ChecklistActivity, MainActivity::class.java)
-                                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                                    startActivity(intent)
-                                                    finish()
                                                 }
+
+                                                // 🔹 STEP 4: update status alat
                                                 firestore.collection("alat")
                                                     .whereEqualTo("kode_alat", kodeAlat)
                                                     .get()
                                                     .addOnSuccessListener { result ->
                                                         val alatDoc = result.documents.firstOrNull()
                                                         alatDoc?.reference?.update("status", statusAlat.value)
+                                                        Log.d("Checklist", "Status alat $kodeAlat diupdate → ${statusAlat.value}")
                                                     }
+
+                                                Toast.makeText(context, "Checklist berhasil disimpan", Toast.LENGTH_SHORT).show()
+
+                                                // 🔹 STEP 5: kembali ke MainActivity
+                                                val intent = Intent(this@ChecklistActivity, MainActivity::class.java)
+                                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                                startActivity(intent)
+                                                finish()
                                             }
                                             .addOnFailureListener {
                                                 Toast.makeText(context, "Gagal menyimpan checklist", Toast.LENGTH_SHORT).show()
+                                                Log.e("Checklist", "Gagal simpan checklist: ${it.message}")
                                             }
                                     }
                                 },
@@ -414,6 +424,15 @@ class ChecklistActivity : ComponentActivity() {
             }
         }
     }
+
+    fun getNextPerbaikanRevisionIndex(data: Map<String, Any>): Int {
+        val existingIndexes = data.keys.mapNotNull { key ->
+            val match = Regex("gambar_perbaikan_(\\d+)").find(key)
+            match?.groupValues?.get(1)?.toInt()
+        }
+        return if (existingIndexes.isEmpty()) 1 else (existingIndexes.maxOrNull() ?: 0) + 1
+    }
+
 
     @Composable
     fun ChecklistItemRow(

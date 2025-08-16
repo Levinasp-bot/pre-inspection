@@ -1,5 +1,6 @@
 package com.example.sistempreinspectionalat
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -62,6 +63,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
@@ -73,6 +76,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.Alignment
 import androidx.core.app.NotificationCompat
@@ -131,7 +135,6 @@ class OutstandingActivity : ComponentActivity() {
         LaunchedEffect(reloadTrigger.value) {
             val firestore = FirebaseFirestore.getInstance()
 
-            // Ambil data alat
             firestore.collection("alat")
                 .get()
                 .addOnSuccessListener { result ->
@@ -142,7 +145,6 @@ class OutstandingActivity : ComponentActivity() {
                     }
                 }
 
-            // Ambil data outstanding
             firestore.collection("outstanding")
                 .whereEqualTo("outstanding", true)
                 .get()
@@ -171,7 +173,6 @@ class OutstandingActivity : ComponentActivity() {
                             }
                         }
 
-                        // Optional: Log untuk debugging
                         Log.d("DocumentDebug", "Dokumen ID: ${doc.id}")
                         Log.d("DocumentDebug", "Semua key diambil: ${item.keys}")
 
@@ -180,1159 +181,1655 @@ class OutstandingActivity : ComponentActivity() {
                 }
         }
 
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "Outstanding Checklist",
-                            color = Color.White
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            val intent = Intent(context, MainActivity::class.java)
-                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
-                        }) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF003366)) // darkBlue
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+
+                // ===== HEADER CUSTOM =====
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { (context as? Activity)?.finish() }) {
                             Icon(
                                 imageVector = Icons.Default.ArrowBack,
                                 contentDescription = "Back",
                                 tint = Color.White
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color(0xFF003366), // Biru sesuai tema kamu
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    )
-                )
-            },
-            content = { padding ->
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(padding)
-                        .padding(12.dp)
-                        .fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Outstanding Checklist",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                // ===== CONTENT (PUTIH ROUNDED) =====
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.White,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
-                    items(checklistList) { checklist ->
-                        val statusPerbaikan = checklist["status_perbaikan"]?.toString() ?: ""
-                        val kodeAlat = checklist["kode_alat"]?.toString() ?: ""
-                        val alatInfo = alatMap[kodeAlat]
-                        val namaAlat = alatInfo?.get("nama")?.toString() ?: ""
-                        val showImage = remember { mutableStateOf(false) }
-                        val fotoUrl = getLatestImageField(checklist)
-                        val estimasiHari = remember { mutableStateOf("") }
-                        val estimasiJam = remember { mutableStateOf("") }
-                        val estimasiMenit = remember { mutableStateOf("") }
-                        val selectedSparepartStatus = remember { mutableStateOf("Indent") }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(checklistList) { checklist ->
+                            val statusPerbaikan = checklist["status_perbaikan"]?.toString() ?: ""
+                            val kodeAlat = checklist["kode_alat"]?.toString() ?: ""
+                            val alatInfo = alatMap[kodeAlat]
+                            val namaAlat = alatInfo?.get("nama")?.toString() ?: ""
+                            val showImage = remember { mutableStateOf(false) }
+                            val fotoUrl = getLatestImageField(checklist)
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(
-                                    width = 4.dp,
-                                    color = Color(0xFFD32F2F),
-                                    shape = RoundedCornerShape(12.dp)
-                                ),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(
+                                        width = 4.dp,
+                                        color = Color(0xFFD32F2F),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "$kodeAlat – $namaAlat",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "$kodeAlat – $namaAlat",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        modifier = Modifier.weight(1f)
+                                        text = "${checklist["tanggal"]} | ${checklist["shift"]}",
+                                        fontSize = 13.sp
                                     )
-                                }
 
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = "${checklist["tanggal"]} | ${checklist["shift"]}", fontSize = 13.sp)
-
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(text = "Status: ${checklist["status_perbaikan"]}", fontSize = 14.sp)
-                                Text(text = "Item: ${checklist["item"]}", fontSize = 14.sp)
-                                Text(text = "Kondisi: ${checklist["kondisi"]}", fontSize = 14.sp)
-
-                                val latestKeterangan = getLatestKeteranganField(checklist)
-                                if (!latestKeterangan.isNullOrBlank()) {
-                                    Text(text = "Keterangan: $latestKeterangan", fontSize = 14.sp)
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                if (statusPerbaikan == "menunggu tanggapan PT BIMA") {
                                     Spacer(modifier = Modifier.height(8.dp))
-
-                                    OutlinedButton(
-                                        onClick = { showImage.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color(0xFF003366)
-                                        ),
-                                        border = BorderStroke(1.dp, Color(0xFF003366)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Lihat Foto")
-                                    }
-
-                                    if (showImage.value) {
-                                        AlertDialog(
-                                            onDismissRequest = { showImage.value = false },
-                                            confirmButton = {
-                                                TextButton(onClick = { showImage.value = false }) {
-                                                    Text("Tutup")
-                                                }
-                                            },
-                                            text = {
-                                                AsyncImage(
-                                                    model = fotoUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                    contentScale = ContentScale.Fit
-                                                )
-                                            }
+                                    Text(
+                                        text = "Status: ${checklist["status_perbaikan"]}",
+                                        fontSize = 14.sp
+                                    )
+                                    Text(text = "Item: ${checklist["item"]}", fontSize = 14.sp)
+                                    Text(
+                                        text = "Kondisi: ${checklist["kondisi"]}",
+                                        fontSize = 14.sp
+                                    )
+                                    val latestKeterangan = getLatestKeteranganField(checklist)
+                                    if (!latestKeterangan.isNullOrBlank()) {
+                                        Text(
+                                            text = "Keterangan: $latestKeterangan",
+                                            fontSize = 14.sp
                                         )
                                     }
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    Button(
-                                        onClick = { showDialogBima.value = true },
-                                        shape = RoundedCornerShape(10.dp), // lebih kecil
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF003366), // biru gelap kamu
-                                            contentColor = Color.White // font putih
-                                        ),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Beri Tanggapan")
-                                    }
+                                    if (statusPerbaikan == "menunggu tanggapan PT BIMA") {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val isSubmitting = remember { mutableStateOf(false) }
+                                        val estimasiHari = remember { mutableStateOf("") }
+                                        val estimasiJam = remember { mutableStateOf("") }
+                                        val estimasiMenit = remember { mutableStateOf("") }
+                                        val selectedSparepartStatus =
+                                            remember { mutableStateOf("") }
+                                        val tanggapanList = remember { mutableStateListOf("") }
+                                        val sparepartHari = remember { mutableStateOf("") }
+                                        val sparepartJam = remember { mutableStateOf("") }
+                                        val sparepartMenit = remember { mutableStateOf("") }
 
-                                    val isSubmitting = remember { mutableStateOf(false) }
+                                        OutlinedButton(
+                                            onClick = { showImage.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color(0xFF003366)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFF003366)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Lihat Foto")
+                                        }
 
-                                    if (isSubmitting.value) {
-                                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                                    }
-
-                                    if (showDialogBima.value) {
-                                        AlertDialog(
-                                            onDismissRequest = {
-                                                showDialogBima.value = false
-                                                perbaikanKeterangan.value = ""
-                                            },
-                                            title = {
-                                                Text(
-                                                    "Tanggapan Perbaikan",
-                                                    style = MaterialTheme.typography.titleLarge
-                                                )
-                                            },
-                                            text = {
-                                                Column(modifier = Modifier.fillMaxWidth()) {
-                                                    Text(
-                                                        "Silakan masukkan tanggapan Anda terkait perbaikan alat ini.",
-                                                        style = MaterialTheme.typography.bodyMedium
-                                                    )
-                                                    Spacer(modifier = Modifier.height(12.dp))
-                                                    OutlinedTextField(
-                                                        value = perbaikanKeterangan.value,
-                                                        onValueChange = { perbaikanKeterangan.value = it },
-                                                        placeholder = { Text("Masukkan tanggapan...") },
-                                                        modifier = Modifier.fillMaxWidth()
+                                        if (showImage.value) {
+                                            AlertDialog(
+                                                onDismissRequest = { showImage.value = false },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        showImage.value = false
+                                                    }) {
+                                                        Text("Tutup")
+                                                    }
+                                                },
+                                                text = {
+                                                    AsyncImage(
+                                                        model = fotoUrl,
+                                                        contentDescription = null,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(8.dp)),
+                                                        contentScale = ContentScale.Fit
                                                     )
                                                 }
-                                            },
-                                            confirmButton = {
-                                                Button(
-                                                    onClick = {
-                                                        showDialogBima.value = false
-                                                        isSubmitting.value = true
+                                            )
+                                        }
 
-                                                        val firestore = FirebaseFirestore.getInstance()
-                                                        val docRef = firestore.collection("outstanding")
-                                                            .whereEqualTo("kode_alat", kodeAlat)
-                                                            .whereEqualTo("tanggal", checklist["tanggal"])
-                                                            .whereEqualTo("item", checklist["item"])
-                                                            .limit(1)
+                                        Spacer(modifier = Modifier.height(8.dp))
 
-                                                        docRef.get().addOnSuccessListener { result ->
-                                                            if (!result.isEmpty) {
-                                                                val doc = result.documents[0]
-                                                                val docId = doc.id
-                                                                fun updateFirestore() {
-                                                                    val updateData = mapOf(
-                                                                        "tanggapan_bima" to perbaikanKeterangan.value,
-                                                                        "tanggapan_bima_timestamp" to FieldValue.serverTimestamp(),
-                                                                        "status_perbaikan" to "menunggu tanggapan teknik"
-                                                                    )
+                                        Button(
+                                            onClick = { showDialogBima.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF003366),
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Beri Tanggapan")
+                                        }
 
-                                                                    firestore.collection("outstanding").document(docId).update(updateData)
-                                                                        .addOnSuccessListener {
-                                                                            Log.d("UpdateFirestore", "Dokumen berhasil diupdate.")
-                                                                            perbaikanKeterangan.value = ""
-                                                                            checklistList.clear()
-                                                                            reloadTrigger.value = !reloadTrigger.value
-                                                                        }
-                                                                        .addOnFailureListener {
-                                                                            Log.e("UpdateFirestore", "Gagal update dokumen: ${it.message}")
-                                                                        }
-
-                                                                    val json = JSONObject().apply {
-                                                                        put("kode_alat", kodeAlat)
-                                                                        put("tanggal", checklist["tanggal"])
-                                                                        put("item", checklist["item"])
-                                                                        put("tanggapan_bima", perbaikanKeterangan.value)
-                                                                        put("operator_email", doc.getString("operator_email") ?: "")
-                                                                    }
-
-                                                                    val client = OkHttpClient()
-                                                                    val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json.toString())
-                                                                    val request = Request.Builder()
-                                                                        .url("https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec")
-                                                                        .post(requestBody)
-                                                                        .build()
-
-                                                                    client.newCall(request).enqueue(object : Callback {
-                                                                        override fun onFailure(call: Call, e: IOException) {
-                                                                            Log.e("EmailNotif", "Gagal kirim email", e)
-                                                                            isSubmitting.value = false
-                                                                        }
-
-                                                                        override fun onResponse(call: Call, response: Response) {
-                                                                            Log.d("EmailNotif", "Email berhasil dikirim: ${response.body?.string()}")
-                                                                            isSubmitting.value = false
-                                                                        }
-                                                                    })
-                                                                }
-
-                                                                updateFirestore()
-
-                                                            } else {
-                                                                isSubmitting.value = false
-                                                            }
-                                                        }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00695C))
-                                                ) {
-                                                    Text("Kirim", color = Color.White)
-                                                }
-                                            },
-                                            dismissButton = {
-                                                OutlinedButton(
-                                                    onClick = {
-                                                        showDialogBima.value = false
-                                                        perbaikanKeterangan.value = ""
-                                                    }
-                                                ) {
-                                                    Text("Batal")
-                                                }
-                                            },
-                                            shape = RoundedCornerShape(16.dp),
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    }
-                                }
-
-                                if (statusPerbaikan == "menunggu tanggapan teknik") {
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    OutlinedButton(
-                                        onClick = { showImage.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color(0xFF003366)
-                                        ),
-                                        border = BorderStroke(1.dp, Color(0xFF003366)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Lihat Foto")
-                                    }
-
-                                    if (showImage.value) {
-                                        AlertDialog(
-                                            onDismissRequest = { showImage.value = false },
-                                            confirmButton = {
-                                                TextButton(onClick = { showImage.value = false }) {
-                                                    Text("Tutup")
-                                                }
-                                            },
-                                            text = {
-                                                AsyncImage(
-                                                    model = fotoUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                    contentScale = ContentScale.Fit
+                                        if (isSubmitting.value) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.align(
+                                                    Alignment.CenterHorizontally
                                                 )
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    Button(
-                                        onClick = { showDialogTeknik.value = true },
-                                        shape = RoundedCornerShape(10.dp), // lebih kecil
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF003366), // biru gelap kamu
-                                            contentColor = Color.White // font putih
-                                        ),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Beri Tanggapan")
-                                    }
-
-                                    if (showDialogTeknik.value) {
-                                        AlertDialog(
-                                            onDismissRequest = {
-                                                showDialogTeknik.value = false
-                                                perbaikanKeterangan.value = ""
-                                                estimasiHari.value = ""
-                                                estimasiJam.value = ""
-                                                estimasiMenit.value = ""
-                                                selectedSparepartStatus.value = ""
-                                            },
-                                            confirmButton = {
-                                                TextButton(
-                                                    onClick = {
-                                                        val firestore = FirebaseFirestore.getInstance()
-                                                        val docRef = firestore.collection("outstanding")
-                                                            .whereEqualTo("kode_alat", kodeAlat)
-                                                            .whereEqualTo("tanggal", checklist["tanggal"])
-                                                            .whereEqualTo("item", checklist["item"])
-                                                            .limit(1)
-
-                                                        docRef.get().addOnSuccessListener { result ->
-                                                            if (!result.isEmpty) {
-                                                                val doc = result.documents[0]
-                                                                val docId = doc.id
-
-                                                                val statusUpdate = when (selectedSparepartStatus.value) {
-                                                                    "Indent" -> "menunggu pengadaan sparepart"
-                                                                    "Available" -> "proses perbaikan alat oleh PT Bima"
-                                                                    else -> "menunggu pengadaan sparepart"
-                                                                }
-
-                                                                val updateData = mapOf(
-                                                                    "tanggapan_bima" to perbaikanKeterangan.value,
-                                                                    "tanggapan_bima_timestamp" to FieldValue.serverTimestamp(),
-                                                                    "estimasi_hari" to estimasiHari.value,
-                                                                    "estimasi_jam" to estimasiJam.value,
-                                                                    "estimasi_menit" to estimasiMenit.value,
-                                                                    "status_perbaikan" to statusUpdate,
-                                                                    "status_sparepart" to selectedSparepartStatus.value
-                                                                )
-
-                                                                firestore.collection("outstanding").document(docId).update(updateData).addOnSuccessListener {
-                                                                    showDialogTeknik.value = false
-                                                                    perbaikanKeterangan.value = ""
-                                                                    estimasiHari.value = ""
-                                                                    estimasiJam.value = ""
-                                                                    estimasiMenit.value = ""
-                                                                    selectedSparepartStatus.value = ""
-                                                                    checklistList.clear()
-                                                                    reloadTrigger.value = !reloadTrigger.value
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                ) {
-                                                    Text("Submit")
-                                                }
-                                            },
-                                            dismissButton = {
-                                                TextButton(onClick = {
-                                                    showDialogTeknik.value = false
-                                                    perbaikanKeterangan.value = ""
+                                            )
+                                        }
+                                        if (showDialogBima.value) {
+                                            AlertDialog(
+                                                modifier = Modifier.fillMaxWidth(0.95f),
+                                                onDismissRequest = {
+                                                    showDialogBima.value = false
+                                                    tanggapanList.clear()
+                                                    tanggapanList.add("") // reset ke satu input kosong
                                                     estimasiHari.value = ""
                                                     estimasiJam.value = ""
                                                     estimasiMenit.value = ""
                                                     selectedSparepartStatus.value = ""
-                                                }) {
-                                                    Text("Batal")
-                                                }
-                                            },
-                                            text = {
-                                                Column {
-                                                    Text("Masukkan tanggapan teknisi:")
-                                                    Spacer(modifier = Modifier.height(8.dp))
-                                                    OutlinedTextField(
-                                                        value = perbaikanKeterangan.value,
-                                                        onValueChange = { perbaikanKeterangan.value = it },
-                                                        placeholder = { Text("Tanggapan teknisi...") },
-                                                        modifier = Modifier.fillMaxWidth()
+                                                    sparepartHari.value = ""
+                                                    sparepartJam.value = ""
+                                                    sparepartMenit.value = ""
+                                                },
+                                                title = {
+                                                    Text(
+                                                        "Tanggapan Perbaikan",
+                                                        style = MaterialTheme.typography.titleLarge
                                                     )
-
-                                                    Spacer(modifier = Modifier.height(12.dp))
-                                                    Text("Estimasi Waktu Perbaikan:")
-
-                                                    Row(
-                                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                                        modifier = Modifier.fillMaxWidth()
+                                                },
+                                                text = {
+                                                    Column(
+                                                        modifier = Modifier.verticalScroll(
+                                                            rememberScrollState()
+                                                        )
                                                     ) {
-                                                        OutlinedTextField(
-                                                            value = estimasiHari.value,
-                                                            onValueChange = { estimasiHari.value = it },
-                                                            label = { Text("Hari") },
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        OutlinedTextField(
-                                                            value = estimasiJam.value,
-                                                            onValueChange = { estimasiJam.value = it },
-                                                            label = { Text("Jam") },
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        OutlinedTextField(
-                                                            value = estimasiMenit.value,
-                                                            onValueChange = { estimasiMenit.value = it },
-                                                            label = { Text("Menit") },
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                    }
+                                                        Text("Silakan masukkan tanggapan Anda.")
+                                                        Spacer(modifier = Modifier.height(12.dp))
 
-                                                    Spacer(modifier = Modifier.height(12.dp))
-                                                    Text("Ketersediaan Sparepart:")
-
-                                                    val options = listOf("Indent", "Available")
-                                                    options.forEach { option ->
-                                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                            RadioButton(
-                                                                selected = selectedSparepartStatus.value == option,
-                                                                onClick = { selectedSparepartStatus.value = option }
+                                                        // List input tanggapan
+                                                        tanggapanList.forEachIndexed { index, value ->
+                                                            OutlinedTextField(
+                                                                value = value,
+                                                                onValueChange = { newValue ->
+                                                                    tanggapanList[index] = newValue
+                                                                },
+                                                                placeholder = { Text("Masukkan tanggapan...") },
+                                                                modifier = Modifier.fillMaxWidth()
                                                             )
-                                                            Text(option)
+                                                            Spacer(modifier = Modifier.height(8.dp))
                                                         }
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
 
-                                if (statusPerbaikan == "menunggu pengadaan sparepart") {
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                                        // Tombol tambah input baru
+                                                        TextButton(onClick = { tanggapanList.add("") }) {
+                                                            Text("+ Tambah Tanggapan")
+                                                        }
 
-                                    OutlinedButton(
-                                        onClick = { showImage.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color(0xFF003366)
-                                        ),
-                                        border = BorderStroke(1.dp, Color(0xFF003366)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Lihat Foto")
-                                    }
+                                                        Spacer(modifier = Modifier.height(12.dp))
+                                                        Text("Estimasi Waktu Pengadaan:")
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                            OutlinedTextField(
+                                                                value = estimasiHari.value,
+                                                                onValueChange = {
+                                                                    estimasiHari.value = it
+                                                                },
+                                                                label = { Text("Hari") },
+                                                                modifier = Modifier.weight(1f)
+                                                            )
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            OutlinedTextField(
+                                                                value = estimasiJam.value,
+                                                                onValueChange = {
+                                                                    estimasiJam.value = it
+                                                                },
+                                                                label = { Text("Jam") },
+                                                                modifier = Modifier.weight(1f)
+                                                            )
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            OutlinedTextField(
+                                                                value = estimasiMenit.value,
+                                                                onValueChange = {
+                                                                    estimasiMenit.value = it
+                                                                },
+                                                                label = { Text("Menit") },
+                                                                modifier = Modifier.weight(1f)
+                                                            )
+                                                        }
 
-                                    if (showImage.value) {
-                                        AlertDialog(
-                                            onDismissRequest = { showImage.value = false },
-                                            confirmButton = {
-                                                TextButton(onClick = { showImage.value = false }) {
-                                                    Text("Tutup")
-                                                }
-                                            },
-                                            text = {
-                                                AsyncImage(
-                                                    model = fotoUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                    contentScale = ContentScale.Fit
-                                                )
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    val showInstruksiDialog = remember { mutableStateOf(false) }
-                                    val instruksiPerbaikan = remember { mutableStateOf("") }
-
-                                    Button(
-                                        onClick = { showInstruksiDialog.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF003366),
-                                            contentColor = Color.White
-                                        ),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Sparepart Sudah Tersedia")
-                                    }
-
-                                    if (showInstruksiDialog.value) {
-                                        AlertDialog(
-                                            onDismissRequest = {
-                                                showInstruksiDialog.value = false
-                                                instruksiPerbaikan.value = ""
-                                            },
-                                            confirmButton = {
-                                                Button(
-                                                    onClick = {
-                                                        val firestore = FirebaseFirestore.getInstance()
-                                                        val docRef = firestore.collection("outstanding")
-                                                            .whereEqualTo("kode_alat", kodeAlat)
-                                                            .whereEqualTo("tanggal", checklist["tanggal"])
-                                                            .whereEqualTo("item", checklist["item"])
-                                                            .limit(1)
-
-                                                        docRef.get().addOnSuccessListener { result ->
-                                                            if (!result.isEmpty) {
-                                                                val docId = result.documents[0].id
-                                                                val updateData = mapOf(
-                                                                    "instruksi_teknik" to instruksiPerbaikan.value,
-                                                                    "instruksi_teknik_timestamp" to FieldValue.serverTimestamp(),
-                                                                    "status_perbaikan" to "proses perbaikan alat oleh PT Bima"
+                                                        Spacer(modifier = Modifier.height(12.dp))
+                                                        Text("Apakah Sparepart Indent?")
+                                                        val options = listOf("Indent", "Tidak")
+                                                        options.forEach { option ->
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                RadioButton(
+                                                                    selected = selectedSparepartStatus.value == option,
+                                                                    onClick = {
+                                                                        selectedSparepartStatus.value =
+                                                                            option
+                                                                    }
                                                                 )
-
-                                                                firestore.collection("outstanding").document(docId)
-                                                                    .update(updateData)
-                                                                    .addOnSuccessListener {
-                                                                        showInstruksiDialog.value = false
-                                                                        instruksiPerbaikan.value = ""
-                                                                        checklistList.clear()
-                                                                        reloadTrigger.value = !reloadTrigger.value
-                                                                    }
+                                                                Text(option)
                                                             }
                                                         }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00695C))
-                                                ) {
-                                                    Text("Kirim", color = Color.White)
-                                                }
-                                            },
-                                            dismissButton = {
-                                                OutlinedButton(onClick = {
-                                                    showInstruksiDialog.value = false
-                                                    instruksiPerbaikan.value = ""
-                                                }) {
-                                                    Text("Batal")
-                                                }
-                                            },
-                                            title = {
-                                                Text("Instruksi Perbaikan", style = MaterialTheme.typography.titleLarge)
-                                            },
-                                            text = {
-                                                Column {
-                                                    Text("Masukkan instruksi perbaikan untuk PT BIMA:")
-                                                    Spacer(modifier = Modifier.height(12.dp))
-                                                    OutlinedTextField(
-                                                        value = instruksiPerbaikan.value,
-                                                        onValueChange = { instruksiPerbaikan.value = it },
-                                                        placeholder = { Text("Contoh: Silakan lakukan penggantian part...") },
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    )
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
 
-                                if (statusPerbaikan == "proses perbaikan alat oleh PT Bima") {
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Tombol LIHAT FOTO
-                                    OutlinedButton(
-                                        onClick = { showImage.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color(0xFF003366)
-                                        ),
-                                        border = BorderStroke(1.dp, Color(0xFF003366)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Lihat Foto")
-                                    }
-
-                                    if (showImage.value) {
-                                        AlertDialog(
-                                            onDismissRequest = { showImage.value = false },
-                                            confirmButton = {
-                                                TextButton(onClick = { showImage.value = false }) {
-                                                    Text("Tutup")
-                                                }
-                                            },
-                                            text = {
-                                                AsyncImage(
-                                                    model = fotoUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                    contentScale = ContentScale.Fit
-                                                )
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                                        perbaikanFotoUri.value = uri
-                                    }
-
-                                    Button(
-                                        onClick = { showPerbaikanDialog.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF003366),
-                                            contentColor = Color.White
-                                        ),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Beri Tanggapan")
-                                    }
-
-                                    if (showPerbaikanDialog.value) {
-                                        AlertDialog(
-                                            onDismissRequest = {
-                                                showPerbaikanDialog.value = false
-                                                keteranganPerbaikan.value = ""
-                                                perbaikanFotoUri.value = null
-                                            },
-                                            confirmButton = {
-                                                Button(
-                                                    onClick = {
-                                                        val uri = perbaikanFotoUri.value
-                                                        if (uri == null) {
-                                                            Toast.makeText(context, "Silakan pilih foto terlebih dahulu", Toast.LENGTH_SHORT).show()
-                                                            return@Button
-                                                        }
-
-                                                        val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-
-                                                        uploadImageToCloudinary(bitmap) { imageUrl ->
-                                                            if (imageUrl != null) {
-                                                                val firestore = FirebaseFirestore.getInstance()
-                                                                val docRef = firestore.collection("outstanding")
-                                                                    .whereEqualTo("kode_alat", kodeAlat)
-                                                                    .whereEqualTo("tanggal", checklist["tanggal"])
-                                                                    .whereEqualTo("item", checklist["item"])
-                                                                    .limit(1)
-
-                                                                docRef.get().addOnSuccessListener { result ->
-                                                                    if (!result.isEmpty) {
-                                                                        val doc = result.documents[0]
-                                                                        val docId = doc.id
-                                                                        val data = doc.data ?: emptyMap()
-
-                                                                        val index = data.keys
-                                                                            .filter { it.startsWith("keterangan_perbaikan_") }
-                                                                            .mapNotNull { it.removePrefix("keterangan_perbaikan_").toIntOrNull() }
-                                                                            .maxOrNull()?.plus(1) ?: 0
-
-                                                                        val imgField = "gambar_perbaikan_$index"
-                                                                        val ketField = "keterangan_perbaikan_$index"
-                                                                        val timeField = "${ketField}_timestamp"
-
-                                                                        val updateData = mapOf(
-                                                                            imgField to imageUrl,
-                                                                            ketField to keteranganPerbaikan.value,
-                                                                            timeField to FieldValue.serverTimestamp(),
-                                                                            "status_perbaikan" to "menunggu konfirmasi operator"
-                                                                        )
-
-                                                                        firestore.collection("outstanding").document(docId)
-                                                                            .update(updateData)
-                                                                            .addOnSuccessListener {
-                                                                                showPerbaikanDialog.value = false
-                                                                                keteranganPerbaikan.value = ""
-                                                                                perbaikanFotoUri.value = null
-                                                                                checklistList.clear()
-                                                                                reloadTrigger.value = !reloadTrigger.value
-                                                                            }
-                                                                    }
-                                                                }
-                                                            } else {
-                                                                Toast.makeText(context, "Upload gambar gagal", Toast.LENGTH_SHORT).show()
+                                                        if (selectedSparepartStatus.value == "Indent") {
+                                                            Spacer(modifier = Modifier.height(12.dp))
+                                                            Text("Estimasi Waktu Pengadaan Sparepart:")
+                                                            Row(
+                                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            ) {
+                                                                OutlinedTextField(
+                                                                    value = sparepartHari.value,
+                                                                    onValueChange = {
+                                                                        sparepartHari.value = it
+                                                                    },
+                                                                    label = { Text("Hari") },
+                                                                    modifier = Modifier.weight(1f)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                OutlinedTextField(
+                                                                    value = sparepartJam.value,
+                                                                    onValueChange = {
+                                                                        sparepartJam.value = it
+                                                                    },
+                                                                    label = { Text("Jam") },
+                                                                    modifier = Modifier.weight(1f)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                OutlinedTextField(
+                                                                    value = sparepartMenit.value,
+                                                                    onValueChange = {
+                                                                        sparepartMenit.value = it
+                                                                    },
+                                                                    label = { Text("Menit") },
+                                                                    modifier = Modifier.weight(1f)
+                                                                )
                                                             }
                                                         }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00695C))
-                                                ) {
-                                                    Text("Kirim", color = Color.White)
-                                                }
-                                            },
-                                            dismissButton = {
-                                                OutlinedButton(onClick = {
-                                                    showPerbaikanDialog.value = false
-                                                    keteranganPerbaikan.value = ""
-                                                    perbaikanFotoUri.value = null
-                                                }) {
-                                                    Text("Batal")
-                                                }
-                                            },
-                                            title = {
-                                                Text("Tanggapan Perbaikan", style = MaterialTheme.typography.titleLarge)
-                                            },
-                                            text = {
-                                                Column {
-                                                    Text("Masukkan keterangan dan unggah foto perbaikan:")
-                                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                                    OutlinedTextField(
-                                                        value = keteranganPerbaikan.value,
-                                                        onValueChange = { keteranganPerbaikan.value = it },
-                                                        placeholder = { Text("Contoh: Sudah diganti dengan part baru...") },
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    )
-
-                                                    Spacer(modifier = Modifier.height(12.dp))
-
+                                                    }
+                                                },
+                                                confirmButton = {
                                                     Button(
-                                                        onClick = { launcher.launch("image/*") },
-                                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005BBB))
-                                                    ) {
-                                                        Text("Pilih Foto", color = Color.White)
-                                                    }
+                                                        onClick = {
+                                                            showDialogBima.value = false
+                                                            isSubmitting.value = true
 
-                                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                                    perbaikanFotoUri.value?.let {
-                                                        AsyncImage(
-                                                            model = it,
-                                                            contentDescription = null,
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .height(200.dp)
-                                                                .clip(RoundedCornerShape(8.dp)),
-                                                            contentScale = ContentScale.Crop
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-
-                                if (statusPerbaikan == "menunggu konfirmasi operator") {
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Tombol lihat foto terakhir
-                                    OutlinedButton(
-                                        onClick = { showImage.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color(0xFF003366)
-                                        ),
-                                        border = BorderStroke(1.dp, Color(0xFF003366)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Lihat Foto Perbaikan")
-                                    }
-
-                                    if (showImage.value) {
-                                        val data = checklist
-                                        val maxIndex = data.keys
-                                            .filter { it.startsWith("gambar_perbaikan_") }
-                                            .mapNotNull { it.removePrefix("gambar_perbaikan_").toIntOrNull() }
-                                            .maxOrNull() ?: 0
-                                        val lastFotoUrl = data["gambar_perbaikan_$maxIndex"] as? String ?: ""
-
-                                        AlertDialog(
-                                            onDismissRequest = { showImage.value = false },
-                                            confirmButton = {
-                                                TextButton(onClick = { showImage.value = false }) {
-                                                    Text("Tutup")
-                                                }
-                                            },
-                                            text = {
-                                                AsyncImage(
-                                                    model = lastFotoUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                    contentScale = ContentScale.Fit
-                                                )
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Tombol Revisi
-                                    Button(
-                                        onClick = { showPerbaikanDialog.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFFD32F2F),
-                                            contentColor = Color.White
-                                        ),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Revisi")
-                                    }
-
-                                    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                                        perbaikanFotoUri.value = uri
-                                    }
-
-                                    if (showPerbaikanDialog.value) {
-                                        AlertDialog(
-                                            onDismissRequest = {
-                                                showPerbaikanDialog.value = false
-                                                keteranganPerbaikan.value = ""
-                                                perbaikanFotoUri.value = null
-                                            },
-                                            confirmButton = {
-                                                Button(
-                                                    onClick = {
-                                                        val uri = perbaikanFotoUri.value
-                                                        if (uri == null) {
-                                                            Toast.makeText(context, "Silakan pilih foto terlebih dahulu", Toast.LENGTH_SHORT).show()
-                                                            return@Button
-                                                        }
-
-                                                        val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-
-                                                        uploadImageToCloudinary(bitmap) { imageUrl ->
-                                                            if (imageUrl != null) {
-                                                                val firestore = FirebaseFirestore.getInstance()
-                                                                val docRef = firestore.collection("outstanding")
-                                                                    .whereEqualTo("kode_alat", kodeAlat)
-                                                                    .whereEqualTo("tanggal", checklist["tanggal"])
-                                                                    .whereEqualTo("item", checklist["item"])
-                                                                    .limit(1)
-
-                                                                docRef.get().addOnSuccessListener { result ->
-                                                                    if (!result.isEmpty) {
-                                                                        val doc = result.documents[0]
-                                                                        val docId = doc.id
-                                                                        val data = doc.data ?: emptyMap()
-
-                                                                        val index = data.keys
-                                                                            .filter { it.startsWith("keterangan_perbaikan_") }
-                                                                            .mapNotNull { it.removePrefix("keterangan_perbaikan_").toIntOrNull() }
-                                                                            .maxOrNull()?.plus(1) ?: 0
-
-                                                                        val imgField = "gambar_perbaikan_$index"
-                                                                        val ketField = "keterangan_perbaikan_$index"
-                                                                        val timeField = "revisi_operator_${index}_timestamp"
-
-                                                                        val updateData = mapOf(
-                                                                            imgField to imageUrl,
-                                                                            ketField to keteranganPerbaikan.value,
-                                                                            timeField to FieldValue.serverTimestamp(),
-                                                                            "status_perbaikan" to "perlu perbaikan ulang"
-                                                                        )
-
-                                                                        firestore.collection("outstanding").document(docId)
-                                                                            .update(updateData)
-                                                                            .addOnSuccessListener {
-                                                                                showPerbaikanDialog.value = false
-                                                                                keteranganPerbaikan.value = ""
-                                                                                perbaikanFotoUri.value = null
-                                                                                checklistList.clear()
-                                                                                reloadTrigger.value = !reloadTrigger.value
-                                                                            }
-                                                                    }
-                                                                }
-                                                            } else {
-                                                                Toast.makeText(context, "Upload ke Cloudinary gagal", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00695C))
-                                                ) {
-                                                    Text("Kirim", color = Color.White)
-                                                }
-                                            },
-                                            dismissButton = {
-                                                OutlinedButton(onClick = {
-                                                    showPerbaikanDialog.value = false
-                                                    keteranganPerbaikan.value = ""
-                                                    perbaikanFotoUri.value = null
-                                                }) {
-                                                    Text("Batal")
-                                                }
-                                            },
-                                            title = { Text("Revisi Perbaikan", style = MaterialTheme.typography.titleLarge) },
-                                            text = {
-                                                Column {
-                                                    Text("Masukkan keterangan dan unggah foto revisi:")
-                                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                                    OutlinedTextField(
-                                                        value = keteranganPerbaikan.value,
-                                                        onValueChange = { keteranganPerbaikan.value = it },
-                                                        placeholder = { Text("Contoh: Part lama tidak sesuai, perlu diganti ulang...") },
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    )
-
-                                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                                    Button(
-                                                        onClick = { launcher.launch("image/*") },
-                                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005BBB))
-                                                    ) {
-                                                        Text("Pilih Foto", color = Color.White)
-                                                    }
-
-                                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                                    perbaikanFotoUri.value?.let {
-                                                        AsyncImage(
-                                                            model = it,
-                                                            contentDescription = null,
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .height(200.dp)
-                                                                .clip(RoundedCornerShape(8.dp)),
-                                                            contentScale = ContentScale.Crop
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Tombol Konfirmasi Perbaikan
-                                    Button(
-                                        onClick = {
-                                            val firestore = FirebaseFirestore.getInstance()
-                                            val docRef = firestore.collection("outstanding")
-                                                .whereEqualTo("kode_alat", kodeAlat)
-                                                .whereEqualTo("tanggal", checklist["tanggal"])
-                                                .whereEqualTo("item", checklist["item"])
-                                                .limit(1)
-
-                                            docRef.get().addOnSuccessListener { result ->
-                                                if (!result.isEmpty) {
-                                                    val docId = result.documents[0].id
-                                                    val update = mapOf(
-                                                        "status_perbaikan" to "menunggu verifikasi Manager Operasi",
-                                                        "konfirmasi_operator_timestamp" to FieldValue.serverTimestamp()
-                                                    )
-                                                    firestore.collection("outstanding").document(docId)
-                                                        .update(update)
-                                                        .addOnSuccessListener {
-                                                            checklistList.clear()
-                                                            reloadTrigger.value = !reloadTrigger.value
-                                                        }
-                                                }
-                                            }
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
-                                        shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Konfirmasi Perbaikan", color = Color.White)
-                                    }
-                                }
-
-                                if (statusPerbaikan == "perlu perbaikan ulang") {
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    OutlinedButton(
-                                        onClick = { showImage.value = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color(0xFF003366)
-                                        ),
-                                        border = BorderStroke(1.dp, Color(0xFF003366)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Lihat Foto")
-                                    }
-
-                                    if (showImage.value) {
-                                        AlertDialog(
-                                            onDismissRequest = { showImage.value = false },
-                                            confirmButton = {
-                                                TextButton(onClick = { showImage.value = false }) {
-                                                    Text("Tutup")
-                                                }
-                                            },
-                                            text = {
-                                                AsyncImage(
-                                                    model = fotoUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                    contentScale = ContentScale.Fit
-                                                )
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    OutlinedButton(
-                                        onClick = { showDialog.value = true },
-                                        shape = RoundedCornerShape(50),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color(0xFF00695C)
-                                        ),
-                                        border = BorderStroke(1.dp, Color(0xFF00695C)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Beri Tanggapan")
-                                    }
-
-                                    val isSubmitting = remember { mutableStateOf(false) }
-                                    if (isSubmitting.value) {
-                                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                                    }
-
-                                    if (showDialog.value) {
-                                        AlertDialog(
-                                            onDismissRequest = { showDialog.value = false },
-                                            confirmButton = {
-                                                TextButton(
-                                                    onClick = {
-                                                        showDialog.value = false
-                                                        isSubmitting.value = true
-
-                                                        val firestore = FirebaseFirestore.getInstance()
-                                                        val docRef = firestore.collection("outstanding")
-                                                            .whereEqualTo("kode_alat", kodeAlat)
-                                                            .whereEqualTo("tanggal", checklist["tanggal"])
-                                                            .whereEqualTo("item", checklist["item"])
-                                                            .limit(1)
-
-                                                        docRef.get().addOnSuccessListener { result ->
-                                                            if (!result.isEmpty) {
-                                                                val doc = result.documents[0]
-                                                                val docId = doc.id
-                                                                fun updateFirestore() {
-                                                                    val updateData = mapOf(
-                                                                        "tanggapan_bima" to perbaikanKeterangan.value,
-                                                                        "tanggapan_bima_timestamp" to FieldValue.serverTimestamp(),
-                                                                        "status_perbaikan" to "menunggu tanggapan teknik"
+                                                            val firestore =
+                                                                FirebaseFirestore.getInstance()
+                                                            val docRef =
+                                                                firestore.collection("outstanding")
+                                                                    .whereEqualTo(
+                                                                        "kode_alat",
+                                                                        kodeAlat
                                                                     )
+                                                                    .whereEqualTo(
+                                                                        "tanggal",
+                                                                        checklist["tanggal"]
+                                                                    )
+                                                                    .whereEqualTo(
+                                                                        "item",
+                                                                        checklist["item"]
+                                                                    )
+                                                                    .limit(1)
 
-                                                                    firestore.collection("outstanding").document(docId).update(updateData)
-                                                                        .addOnSuccessListener {
-                                                                            Log.d("UpdateFirestore", "Dokumen berhasil diupdate.")
-                                                                            perbaikanKeterangan.value = ""
-                                                                        }
-                                                                        .addOnFailureListener {
-                                                                            Log.e("UpdateFirestore", "Gagal update dokumen: ${it.message}")
+                                                            docRef.get()
+                                                                .addOnSuccessListener { result ->
+                                                                    if (!result.isEmpty) {
+                                                                        val doc =
+                                                                            result.documents[0]
+                                                                        val docId = doc.id
+
+                                                                        // Cari index terakhir dari field tanggapan_bima_x
+                                                                        val existingKeys =
+                                                                            doc.data?.keys?.filter {
+                                                                                it.startsWith("tanggapan_bima_")
+                                                                            } ?: emptyList()
+                                                                        val lastIndex =
+                                                                            existingKeys.mapNotNull {
+                                                                                it.removePrefix("tanggapan_bima_")
+                                                                                    .toIntOrNull()
+                                                                            }.maxOrNull() ?: 0
+
+                                                                        val nextIndex =
+                                                                            lastIndex + 1
+                                                                        val fieldName =
+                                                                            "tanggapan_bima_$nextIndex"
+
+                                                                        // Data yang akan diupdate
+                                                                        val updateData =
+                                                                            mutableMapOf<String, Any>(
+                                                                                fieldName to tanggapanList.filter { it.isNotBlank() },
+                                                                                "tanggapan_bima_timestamp" to FieldValue.serverTimestamp(),
+                                                                                "estimasi_hari" to estimasiHari.value,
+                                                                                "estimasi_jam" to estimasiJam.value,
+                                                                                "estimasi_menit" to estimasiMenit.value,
+                                                                                "status_sparepart" to selectedSparepartStatus.value,
+                                                                                "status_perbaikan" to "menunggu tanggapan teknik"
+                                                                            )
+
+                                                                        if (selectedSparepartStatus.value == "Indent") {
+                                                                            updateData["sparepart_estimasi_hari"] =
+                                                                                sparepartHari.value
+                                                                            updateData["sparepart_estimasi_jam"] =
+                                                                                sparepartJam.value
+                                                                            updateData["sparepart_estimasi_menit"] =
+                                                                                sparepartMenit.value
                                                                         }
 
-                                                                    val json = JSONObject().apply {
-                                                                        put("kode_alat", kodeAlat)
-                                                                        put("tanggal", checklist["tanggal"])
-                                                                        put("item", checklist["item"])
-                                                                        put("tanggapan_bima", perbaikanKeterangan.value)
-                                                                        put("operator_email", doc.getString("operator_email") ?: "")
+                                                                        firestore.collection("outstanding")
+                                                                            .document(docId)
+                                                                            .update(updateData)
+                                                                            .addOnSuccessListener {
+                                                                                tanggapanList.clear()
+                                                                                tanggapanList.add("")
+                                                                                isSubmitting.value =
+                                                                                    false
+                                                                                reloadTrigger.value =
+                                                                                    !reloadTrigger.value
+                                                                            }
+                                                                            .addOnFailureListener {
+                                                                                isSubmitting.value =
+                                                                                    false
+                                                                            }
+                                                                    } else {
+                                                                        isSubmitting.value = false
                                                                     }
-
-                                                                    val client = OkHttpClient()
-                                                                    val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json.toString())
-                                                                    val request = Request.Builder()
-                                                                        .url("https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec")
-                                                                        .post(requestBody)
-                                                                        .build()
-
-                                                                    client.newCall(request).enqueue(object : Callback {
-                                                                        override fun onFailure(call: Call, e: IOException) {
-                                                                            Log.e("EmailNotif", "Gagal kirim email", e)
-                                                                            isSubmitting.value = false
-                                                                        }
-
-                                                                        override fun onResponse(call: Call, response: Response) {
-                                                                            Log.d("EmailNotif", "Email berhasil dikirim: ${response.body?.string()}")
-                                                                            isSubmitting.value = false
-                                                                        }
-                                                                    })
                                                                 }
-
-                                                                updateFirestore()
-
-                                                            } else {
-                                                                isSubmitting.value = false
-                                                            }
-                                                        }
+                                                        },
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = Color(0xFF00695C)
+                                                        )
+                                                    ) {
+                                                        Text("Kirim", color = Color.White)
                                                     }
-                                                ) {
-                                                    Text("Submit")
-                                                }
-                                            },
-                                            dismissButton = {
-                                                TextButton(onClick = {
-                                                    showDialog.value = false
-                                                    perbaikanKeterangan.value = ""
-                                                    perbaikanFotoUri.value = null
-                                                }) {
-                                                    Text("Batal")
-                                                }
-                                            },
-                                            text = {
-                                                Column {
-                                                    Text("Upload foto perbaikan dan isi keterangan:")
+                                                },
+                                                dismissButton = {
+                                                    OutlinedButton(onClick = {
+                                                        showDialogBima.value = false
+                                                    }) {
+                                                        Text("Batal")
+                                                    }
+                                                },
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                        }
+                                    }
 
-                                                    Spacer(modifier = Modifier.height(8.dp))
+                                    if (statusPerbaikan == "menunggu tanggapan teknik") {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val isSubmitting = remember { mutableStateOf(false) }
+                                        val showDialogKonfirmasi =
+                                            remember { mutableStateOf(false) }
+                                        val showDialogReject = remember { mutableStateOf(false) }
 
-                                                    Card(
+                                        OutlinedButton(
+                                            onClick = { showImage.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color(0xFF003366)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFF003366)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Lihat Foto")
+                                        }
+
+                                        if (showImage.value) {
+                                            AlertDialog(
+                                                onDismissRequest = { showImage.value = false },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        showImage.value = false
+                                                    }) {
+                                                        Text("Tutup")
+                                                    }
+                                                },
+                                                text = {
+                                                    AsyncImage(
+                                                        model = fotoUrl,
+                                                        contentDescription = null,
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .height(150.dp)
-                                                            .clickable { imageLauncher.launch("image/*") },
-                                                        shape = RoundedCornerShape(12.dp),
-                                                        border = BorderStroke(1.dp, Color.Gray),
-                                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8))
-                                                    ) {
-                                                        Box(
-                                                            contentAlignment = Alignment.Center,
-                                                            modifier = Modifier.fillMaxSize()
-                                                        ) {
-                                                            if (perbaikanFotoUri.value != null) {
-                                                                AsyncImage(
-                                                                    model = perbaikanFotoUri.value,
-                                                                    contentDescription = "Foto terpilih",
-                                                                    contentScale = ContentScale.Crop,
-                                                                    modifier = Modifier.fillMaxSize()
+                                                            .clip(RoundedCornerShape(8.dp)),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Tombol Konfirmasi
+                                        Button(
+                                            onClick = { showDialogKonfirmasi.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF003366),
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Konfirmasi")
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Tombol Reject
+                                        OutlinedButton(
+                                            onClick = { showDialogReject.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color.Red
+                                            ),
+                                            border = BorderStroke(1.dp, Color.Red),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Reject")
+                                        }
+
+                                        fun getNextRejectIndex(data: Map<String, Any>): Int {
+                                            var index = 1
+                                            while (data.containsKey("keterangan_reject_$index")) {
+                                                index++
+                                            }
+                                            return index
+                                        }
+
+                                        // Dialog Reject
+                                        if (showDialogReject.value) {
+                                            AlertDialog(
+                                                onDismissRequest = {
+                                                    showDialogReject.value = false
+                                                },
+                                                title = { Text("Reject Perbaikan") },
+                                                text = {
+                                                    Column {
+                                                        Text("Masukkan alasan reject:")
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        OutlinedTextField(
+                                                            value = perbaikanKeterangan.value,
+                                                            onValueChange = {
+                                                                perbaikanKeterangan.value = it
+                                                            },
+                                                            placeholder = { Text("Keterangan reject...") },
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                    }
+                                                },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        isSubmitting.value = true
+                                                        val firestore =
+                                                            FirebaseFirestore.getInstance()
+                                                        val docRef =
+                                                            firestore.collection("outstanding")
+                                                                .whereEqualTo("kode_alat", kodeAlat)
+                                                                .whereEqualTo(
+                                                                    "tanggal",
+                                                                    checklist["tanggal"]
                                                                 )
-                                                            } else {
-                                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                                    Icon(
-                                                                        imageVector = Icons.Default.CameraAlt,
-                                                                        contentDescription = "Upload Foto",
-                                                                        tint = Color.Gray,
-                                                                        modifier = Modifier.size(40.dp)
+                                                                .whereEqualTo(
+                                                                    "item",
+                                                                    checklist["item"]
+                                                                )
+                                                                .limit(1)
+
+                                                        docRef.get()
+                                                            .addOnSuccessListener { result ->
+                                                                if (!result.isEmpty) {
+                                                                    val doc = result.documents[0]
+                                                                    val docId = doc.id
+
+                                                                    val index = getNextRejectIndex(
+                                                                        doc.data ?: emptyMap()
                                                                     )
-                                                                    Spacer(modifier = Modifier.height(8.dp))
-                                                                    Text("Klik untuk pilih foto", color = Color.Gray)
+                                                                    val nextField =
+                                                                        "keterangan_reject_$index"
+
+                                                                    firestore.collection("outstanding")
+                                                                        .document(docId).update(
+                                                                            mapOf(
+                                                                                nextField to perbaikanKeterangan.value,
+                                                                                "status_perbaikan" to "menunggu tanggapan PT BIMA",
+                                                                                "reject_timestamp" to FieldValue.serverTimestamp()
+                                                                            )
+                                                                        ).addOnSuccessListener {
+                                                                            perbaikanKeterangan.value =
+                                                                                ""
+                                                                            showDialogReject.value =
+                                                                                false
+                                                                            isSubmitting.value =
+                                                                                false
+                                                                            reloadTrigger.value =
+                                                                                !reloadTrigger.value
+                                                                        }
+                                                                }
+                                                            }
+                                                    }) {
+                                                        Text("Submit")
+                                                    }
+                                                },
+                                                dismissButton = {
+                                                    TextButton(onClick = {
+                                                        showDialogReject.value = false
+                                                    }) {
+                                                        Text("Batal")
+                                                    }
+                                                }
+                                            )
+                                        }
+
+                                        // Fungsi helper untuk cari index berikutnya
+                                        fun getNextInstruksiIndex(data: Map<String, Any>): Int {
+                                            var maxIndex = 0
+                                            data.keys.forEach { key ->
+                                                if (key.startsWith("instruksi_teknik_")) {
+                                                    val index =
+                                                        key.removePrefix("instruksi_teknik_")
+                                                            .toIntOrNull() ?: 0
+                                                    if (index > maxIndex) {
+                                                        maxIndex = index
+                                                    }
+                                                }
+                                            }
+                                            return maxIndex + 1
+                                        }
+
+                                        if (showDialogKonfirmasi.value) {
+                                            AlertDialog(
+                                                onDismissRequest = {
+                                                    showDialogKonfirmasi.value = false
+                                                    perbaikanKeterangan.value = ""
+                                                },
+                                                title = { Text("Instruksi Perbaikan") },
+                                                text = {
+                                                    OutlinedTextField(
+                                                        value = perbaikanKeterangan.value,
+                                                        onValueChange = {
+                                                            perbaikanKeterangan.value = it
+                                                        },
+                                                        placeholder = { Text("Instruksi perbaikan...") },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        isSubmitting.value = true
+                                                        val firestore =
+                                                            FirebaseFirestore.getInstance()
+                                                        val docRef =
+                                                            firestore.collection("outstanding")
+                                                                .whereEqualTo("kode_alat", kodeAlat)
+                                                                .whereEqualTo(
+                                                                    "tanggal",
+                                                                    checklist["tanggal"]
+                                                                )
+                                                                .whereEqualTo(
+                                                                    "item",
+                                                                    checklist["item"]
+                                                                )
+                                                                .limit(1)
+
+                                                        docRef.get()
+                                                            .addOnSuccessListener { result ->
+                                                                if (!result.isEmpty) {
+                                                                    val doc = result.documents[0]
+                                                                    val docId = doc.id
+                                                                    val data =
+                                                                        doc.data ?: emptyMap()
+
+                                                                    // cari index instruksi berikutnya
+                                                                    val nextIndex =
+                                                                        getNextInstruksiIndex(data)
+                                                                    val nextFieldInstruksi =
+                                                                        "instruksi_teknik_$nextIndex"
+
+                                                                    val sparepartStatus =
+                                                                        doc.getString("status_sparepart")
+                                                                            ?: ""
+                                                                    val statusUpdate =
+                                                                        when (sparepartStatus) {
+                                                                            "Indent" -> "menunggu pengadaan sparepart"
+                                                                            "Tidak" -> "proses perbaikan alat oleh PT BIMA"
+                                                                            else -> "proses perbaikan alat oleh PT BIMA"
+                                                                        }
+
+                                                                    firestore.collection("outstanding")
+                                                                        .document(docId).update(
+                                                                            mapOf(
+                                                                                nextFieldInstruksi to perbaikanKeterangan.value,
+                                                                                "status_perbaikan" to statusUpdate,
+                                                                                "konfirmasi_timestamp" to FieldValue.serverTimestamp()
+                                                                            )
+                                                                        ).addOnSuccessListener {
+                                                                            perbaikanKeterangan.value =
+                                                                                ""
+                                                                            showDialogKonfirmasi.value =
+                                                                                false
+                                                                            isSubmitting.value =
+                                                                                false
+                                                                            reloadTrigger.value =
+                                                                                !reloadTrigger.value
+                                                                        }
+                                                                }
+                                                            }
+                                                    }) {
+                                                        Text("Submit")
+                                                    }
+                                                },
+                                                dismissButton = {
+                                                    TextButton(onClick = {
+                                                        showDialogKonfirmasi.value = false
+                                                    }) {
+                                                        Text("Batal")
+                                                    }
+                                                }
+                                            )
+                                        }
+
+                                        if (isSubmitting.value) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.align(
+                                                    Alignment.CenterHorizontally
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    if (statusPerbaikan == "menunggu pengadaan sparepart") {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val isSubmitting = remember { mutableStateOf(false) }
+                                        val showDialog = remember { mutableStateOf(false) }
+
+                                        OutlinedButton(
+                                            onClick = { showImage.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color(0xFF003366)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFF003366)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Lihat Foto")
+                                        }
+
+                                        if (isSubmitting.value) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.align(
+                                                    Alignment.CenterHorizontally
+                                                )
+                                            )
+                                        }
+
+                                        if (showImage.value) {
+                                            AlertDialog(
+                                                onDismissRequest = { showImage.value = false },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        showImage.value = false
+                                                    }) {
+                                                        Text("Tutup")
+                                                    }
+                                                },
+                                                text = {
+                                                    AsyncImage(
+                                                        model = fotoUrl,
+                                                        contentDescription = null,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(8.dp)),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Tombol Sparepart Sudah Tersedia
+                                        Button(
+                                            onClick = { showDialog.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF003366),
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Sparepart Sudah Tersedia")
+                                        }
+
+                                        // Dialog konfirmasi
+                                        if (showDialog.value) {
+                                            AlertDialog(
+                                                onDismissRequest = { showDialog.value = false },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        isSubmitting.value = true
+                                                        val firestore =
+                                                            FirebaseFirestore.getInstance()
+                                                        val docRef =
+                                                            firestore.collection("outstanding")
+                                                                .whereEqualTo("kode_alat", kodeAlat)
+                                                                .whereEqualTo(
+                                                                    "tanggal",
+                                                                    checklist["tanggal"]
+                                                                )
+                                                                .whereEqualTo(
+                                                                    "item",
+                                                                    checklist["item"]
+                                                                )
+                                                                .limit(1)
+
+                                                        docRef.get()
+                                                            .addOnSuccessListener { result ->
+                                                                if (!result.isEmpty) {
+                                                                    val docId =
+                                                                        result.documents[0].id
+                                                                    firestore.collection("outstanding")
+                                                                        .document(docId)
+                                                                        .update(
+                                                                            mapOf(
+                                                                                "status_perbaikan" to "proses perbaikan alat oleh PT Bima",
+                                                                                "sparepart_ready_timestamp" to FieldValue.serverTimestamp()
+                                                                            )
+                                                                        )
+                                                                        .addOnSuccessListener {
+                                                                            showDialog.value = false
+                                                                            isSubmitting.value =
+                                                                                false
+                                                                            checklistList.clear()
+                                                                            reloadTrigger.value =
+                                                                                !reloadTrigger.value
+                                                                        }
+                                                                }
+                                                            }
+                                                    }) {
+                                                        Text("Iya")
+                                                    }
+                                                },
+                                                dismissButton = {
+                                                    TextButton(onClick = {
+                                                        showDialog.value = false
+                                                    }) {
+                                                        Text("Tidak")
+                                                    }
+                                                },
+                                                title = { Text("Konfirmasi") },
+                                                text = {
+                                                    Text("Apakah sparepart sudah tersedia dan siap dilakukan perbaikan?")
+                                                }
+                                            )
+                                        }
+                                    }
+
+                                    if (statusPerbaikan == "proses perbaikan alat oleh PT Bima") {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val isSubmitting = remember { mutableStateOf(false) }
+                                        OutlinedButton(
+                                            onClick = { showImage.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color(0xFF003366)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFF003366)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Lihat Foto")
+                                        }
+
+                                        if (isSubmitting.value) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.align(
+                                                    Alignment.CenterHorizontally
+                                                )
+                                            )
+                                        }
+
+                                        if (showImage.value) {
+                                            AlertDialog(
+                                                onDismissRequest = { showImage.value = false },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        showImage.value = false
+                                                    }) {
+                                                        Text("Tutup")
+                                                    }
+                                                },
+                                                text = {
+                                                    AsyncImage(
+                                                        model = fotoUrl,
+                                                        contentDescription = null,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(8.dp)),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        val launcher = rememberLauncherForActivityResult(
+                                            ActivityResultContracts.GetContent()
+                                        ) { uri ->
+                                            perbaikanFotoUri.value = uri
+                                        }
+
+                                        Button(
+                                            onClick = { showPerbaikanDialog.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF003366),
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Perbaikan Selesai")
+                                        }
+
+                                        if (showPerbaikanDialog.value) {
+                                            AlertDialog(
+                                                onDismissRequest = {
+                                                    showPerbaikanDialog.value = false
+                                                    keteranganPerbaikan.value = ""
+                                                    perbaikanFotoUri.value = null
+                                                },
+                                                confirmButton = {
+                                                    Button(
+                                                        onClick = {
+                                                            isSubmitting.value = true
+                                                            val uri = perbaikanFotoUri.value
+                                                            if (uri == null) {
+                                                                Toast.makeText(
+                                                                    context,
+                                                                    "Silakan pilih foto terlebih dahulu",
+                                                                    Toast.LENGTH_SHORT
+                                                                ).show()
+                                                                return@Button
+                                                            }
+
+                                                            val bitmap =
+                                                                MediaStore.Images.Media.getBitmap(
+                                                                    context.contentResolver,
+                                                                    uri
+                                                                )
+
+                                                            uploadImageToCloudinary(bitmap) { imageUrl ->
+                                                                if (imageUrl != null) {
+                                                                    val firestore =
+                                                                        FirebaseFirestore.getInstance()
+                                                                    val docRef =
+                                                                        firestore.collection("outstanding")
+                                                                            .whereEqualTo(
+                                                                                "kode_alat",
+                                                                                kodeAlat
+                                                                            )
+                                                                            .whereEqualTo(
+                                                                                "tanggal",
+                                                                                checklist["tanggal"]
+                                                                            )
+                                                                            .whereEqualTo(
+                                                                                "item",
+                                                                                checklist["item"]
+                                                                            )
+                                                                            .limit(1)
+
+                                                                    docRef.get()
+                                                                        .addOnSuccessListener { result ->
+                                                                            if (!result.isEmpty) {
+                                                                                val doc =
+                                                                                    result.documents[0]
+                                                                                val docId = doc.id
+                                                                                val data = doc.data
+                                                                                    ?: emptyMap()
+
+                                                                                val index =
+                                                                                    data.keys
+                                                                                        .filter {
+                                                                                            it.startsWith(
+                                                                                                "keterangan_perbaikan_"
+                                                                                            )
+                                                                                        }
+                                                                                        .mapNotNull {
+                                                                                            it.removePrefix(
+                                                                                                "keterangan_perbaikan_"
+                                                                                            )
+                                                                                                .toIntOrNull()
+                                                                                        }
+                                                                                        .maxOrNull()
+                                                                                        ?.plus(1)
+                                                                                        ?: 0
+
+                                                                                val imgField =
+                                                                                    "gambar_perbaikan_$index"
+                                                                                val ketField =
+                                                                                    "keterangan_perbaikan_$index"
+                                                                                val timeField =
+                                                                                    "${ketField}_timestamp"
+
+                                                                                val updateData =
+                                                                                    mapOf(
+                                                                                        imgField to imageUrl,
+                                                                                        ketField to keteranganPerbaikan.value,
+                                                                                        timeField to FieldValue.serverTimestamp(),
+                                                                                        "status_perbaikan" to "menunggu konfirmasi teknik"
+                                                                                    )
+
+                                                                                firestore.collection(
+                                                                                    "outstanding"
+                                                                                ).document(docId)
+                                                                                    .update(
+                                                                                        updateData
+                                                                                    )
+                                                                                    .addOnSuccessListener {
+                                                                                        showPerbaikanDialog.value =
+                                                                                            false
+                                                                                        keteranganPerbaikan.value =
+                                                                                            ""
+                                                                                        perbaikanFotoUri.value =
+                                                                                            null
+                                                                                        checklistList.clear()
+                                                                                        reloadTrigger.value =
+                                                                                            !reloadTrigger.value
+                                                                                    }
+                                                                            }
+                                                                        }
+                                                                } else {
+                                                                    Toast.makeText(
+                                                                        context,
+                                                                        "Upload gambar gagal",
+                                                                        Toast.LENGTH_SHORT
+                                                                    ).show()
+                                                                }
+                                                            }
+                                                        },
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = Color(0xFF00695C)
+                                                        )
+                                                    ) {
+                                                        Text("Kirim", color = Color.White)
+                                                    }
+                                                },
+                                                dismissButton = {
+                                                    OutlinedButton(onClick = {
+                                                        showPerbaikanDialog.value = false
+                                                        keteranganPerbaikan.value = ""
+                                                        perbaikanFotoUri.value = null
+                                                    }) {
+                                                        Text("Batal")
+                                                    }
+                                                },
+                                                title = {
+                                                    Text(
+                                                        "Tanggapan Perbaikan",
+                                                        style = MaterialTheme.typography.titleLarge
+                                                    )
+                                                },
+                                                text = {
+                                                    Column {
+                                                        Text("Masukkan keterangan dan unggah foto perbaikan:")
+                                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                                        OutlinedTextField(
+                                                            value = keteranganPerbaikan.value,
+                                                            onValueChange = {
+                                                                keteranganPerbaikan.value = it
+                                                            },
+                                                            placeholder = { Text("Contoh: Sudah diganti dengan part baru...") },
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+
+                                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                                        Button(
+                                                            onClick = { launcher.launch("image/*") },
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = Color(0xFF005BBB)
+                                                            )
+                                                        ) {
+                                                            Text("Pilih Foto", color = Color.White)
+                                                        }
+
+                                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                                        perbaikanFotoUri.value?.let {
+                                                            AsyncImage(
+                                                                model = it,
+                                                                contentDescription = null,
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .height(200.dp)
+                                                                    .clip(RoundedCornerShape(8.dp)),
+                                                                contentScale = ContentScale.Crop
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+
+                                    if (statusPerbaikan == "menunggu konfirmasi teknik") {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val isSubmitting = remember { mutableStateOf(false) }
+                                        OutlinedButton(
+                                            onClick = { showImage.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color(0xFF003366)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFF003366)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Lihat Foto Perbaikan")
+                                        }
+                                        if (isSubmitting.value) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.align(
+                                                    Alignment.CenterHorizontally
+                                                )
+                                            )
+                                        }
+                                        if (showImage.value) {
+                                            val data = checklist
+                                            val maxIndex = data.keys
+                                                .filter { it.startsWith("gambar_perbaikan_") }
+                                                .mapNotNull {
+                                                    it.removePrefix("gambar_perbaikan_")
+                                                        .toIntOrNull()
+                                                }
+                                                .maxOrNull() ?: 0
+                                            val lastFotoUrl =
+                                                data["gambar_perbaikan_$maxIndex"] as? String ?: ""
+
+                                            AlertDialog(
+                                                onDismissRequest = { showImage.value = false },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        showImage.value = false
+                                                    }) {
+                                                        Text("Tutup")
+                                                    }
+                                                },
+                                                text = {
+                                                    AsyncImage(
+                                                        model = lastFotoUrl,
+                                                        contentDescription = null,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(8.dp)),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Tombol Revisi
+                                        Button(
+                                            onClick = { showPerbaikanDialog.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFFD32F2F),
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Revisi")
+                                        }
+
+                                        val launcher = rememberLauncherForActivityResult(
+                                            ActivityResultContracts.GetContent()
+                                        ) { uri ->
+                                            perbaikanFotoUri.value = uri
+                                        }
+
+                                        if (showPerbaikanDialog.value) {
+                                            AlertDialog(
+                                                onDismissRequest = {
+                                                    showPerbaikanDialog.value = false
+                                                    keteranganPerbaikan.value = ""
+                                                    perbaikanFotoUri.value = null
+                                                },
+                                                confirmButton = {
+                                                    Button(
+                                                        onClick = {
+                                                            isSubmitting.value = true
+                                                            val uri = perbaikanFotoUri.value
+                                                            if (uri == null) {
+                                                                Toast.makeText(
+                                                                    context,
+                                                                    "Silakan pilih foto terlebih dahulu",
+                                                                    Toast.LENGTH_SHORT
+                                                                ).show()
+                                                                return@Button
+                                                            }
+
+                                                            val bitmap =
+                                                                MediaStore.Images.Media.getBitmap(
+                                                                    context.contentResolver,
+                                                                    uri
+                                                                )
+
+                                                            uploadImageToCloudinary(bitmap) { imageUrl ->
+                                                                if (imageUrl != null) {
+                                                                    val firestore =
+                                                                        FirebaseFirestore.getInstance()
+                                                                    val docRef =
+                                                                        firestore.collection("outstanding")
+                                                                            .whereEqualTo(
+                                                                                "kode_alat",
+                                                                                kodeAlat
+                                                                            )
+                                                                            .whereEqualTo(
+                                                                                "tanggal",
+                                                                                checklist["tanggal"]
+                                                                            )
+                                                                            .whereEqualTo(
+                                                                                "item",
+                                                                                checklist["item"]
+                                                                            )
+                                                                            .limit(1)
+
+                                                                    docRef.get()
+                                                                        .addOnSuccessListener { result ->
+                                                                            if (!result.isEmpty) {
+                                                                                val doc =
+                                                                                    result.documents[0]
+                                                                                val docId = doc.id
+                                                                                val data = doc.data
+                                                                                    ?: emptyMap()
+
+                                                                                val index =
+                                                                                    data.keys
+                                                                                        .filter {
+                                                                                            it.startsWith(
+                                                                                                "keterangan_perbaikan_"
+                                                                                            )
+                                                                                        }
+                                                                                        .mapNotNull {
+                                                                                            it.removePrefix(
+                                                                                                "keterangan_perbaikan_"
+                                                                                            )
+                                                                                                .toIntOrNull()
+                                                                                        }
+                                                                                        .maxOrNull()
+                                                                                        ?.plus(1)
+                                                                                        ?: 0
+
+                                                                                val imgField =
+                                                                                    "gambar_perbaikan_$index"
+                                                                                val ketField =
+                                                                                    "keterangan_perbaikan_$index"
+                                                                                val timeField =
+                                                                                    "revisi_operator_${index}_timestamp"
+
+                                                                                val updateData =
+                                                                                    mapOf(
+                                                                                        imgField to imageUrl,
+                                                                                        ketField to keteranganPerbaikan.value,
+                                                                                        timeField to FieldValue.serverTimestamp(),
+                                                                                        "status_perbaikan" to "perlu perbaikan ulang"
+                                                                                    )
+
+                                                                                firestore.collection(
+                                                                                    "outstanding"
+                                                                                ).document(docId)
+                                                                                    .update(
+                                                                                        updateData
+                                                                                    )
+                                                                                    .addOnSuccessListener {
+                                                                                        showPerbaikanDialog.value =
+                                                                                            false
+                                                                                        keteranganPerbaikan.value =
+                                                                                            ""
+                                                                                        perbaikanFotoUri.value =
+                                                                                            null
+                                                                                        checklistList.clear()
+                                                                                        reloadTrigger.value =
+                                                                                            !reloadTrigger.value
+                                                                                    }
+                                                                            }
+                                                                        }
+                                                                } else {
+                                                                    Toast.makeText(
+                                                                        context,
+                                                                        "Upload ke Cloudinary gagal",
+                                                                        Toast.LENGTH_SHORT
+                                                                    ).show()
+                                                                }
+                                                            }
+                                                        },
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = Color(0xFF00695C)
+                                                        )
+                                                    ) {
+                                                        Text("Kirim", color = Color.White)
+                                                    }
+                                                },
+                                                dismissButton = {
+                                                    OutlinedButton(onClick = {
+                                                        showPerbaikanDialog.value = false
+                                                        keteranganPerbaikan.value = ""
+                                                        perbaikanFotoUri.value = null
+                                                    }) {
+                                                        Text("Batal")
+                                                    }
+                                                },
+                                                title = {
+                                                    Text(
+                                                        "Revisi Perbaikan",
+                                                        style = MaterialTheme.typography.titleLarge
+                                                    )
+                                                },
+                                                text = {
+                                                    Column {
+                                                        Text("Masukkan keterangan dan unggah foto revisi:")
+                                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                                        OutlinedTextField(
+                                                            value = keteranganPerbaikan.value,
+                                                            onValueChange = {
+                                                                keteranganPerbaikan.value = it
+                                                            },
+                                                            placeholder = { Text("Contoh: Part lama tidak sesuai, perlu diganti ulang...") },
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+
+                                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                                        Button(
+                                                            onClick = { launcher.launch("image/*") },
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = Color(0xFF005BBB)
+                                                            )
+                                                        ) {
+                                                            Text("Pilih Foto", color = Color.White)
+                                                        }
+
+                                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                                        perbaikanFotoUri.value?.let {
+                                                            AsyncImage(
+                                                                model = it,
+                                                                contentDescription = null,
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .height(200.dp)
+                                                                    .clip(RoundedCornerShape(8.dp)),
+                                                                contentScale = ContentScale.Crop
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Tombol Konfirmasi Perbaikan
+                                        Button(
+                                            onClick = {
+                                                val firestore = FirebaseFirestore.getInstance()
+                                                val docRef = firestore.collection("outstanding")
+                                                    .whereEqualTo("kode_alat", kodeAlat)
+                                                    .whereEqualTo("tanggal", checklist["tanggal"])
+                                                    .whereEqualTo("item", checklist["item"])
+                                                    .limit(1)
+
+                                                docRef.get().addOnSuccessListener { result ->
+                                                    if (!result.isEmpty) {
+                                                        val docId = result.documents[0].id
+                                                        val update = mapOf(
+                                                            "status_perbaikan" to "menunggu verifikasi Manager Operasi",
+                                                            "konfirmasi_operator_timestamp" to FieldValue.serverTimestamp()
+                                                        )
+                                                        firestore.collection("outstanding")
+                                                            .document(docId)
+                                                            .update(update)
+                                                            .addOnSuccessListener {
+                                                                checklistList.clear()
+                                                                reloadTrigger.value =
+                                                                    !reloadTrigger.value
+                                                            }
+                                                    }
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(
+                                                    0xFF43A047
+                                                )
+                                            ),
+                                            shape = RoundedCornerShape(10.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Konfirmasi Perbaikan", color = Color.White)
+                                        }
+                                    }
+
+                                    if (statusPerbaikan == "perlu perbaikan ulang") {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val isSubmitting = remember { mutableStateOf(false) }
+                                        OutlinedButton(
+                                            onClick = { showImage.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color(0xFF003366)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFF003366)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Lihat Foto")
+                                        }
+
+                                        if (showImage.value) {
+                                            AlertDialog(
+                                                onDismissRequest = { showImage.value = false },
+                                                confirmButton = {
+                                                    TextButton(onClick = {
+                                                        showImage.value = false
+                                                    }) {
+                                                        Text("Tutup")
+                                                    }
+                                                },
+                                                text = {
+                                                    AsyncImage(
+                                                        model = fotoUrl,
+                                                        contentDescription = null,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(8.dp)),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        OutlinedButton(
+                                            onClick = { showDialog.value = true },
+                                            shape = RoundedCornerShape(50),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = Color.White,
+                                                contentColor = Color(0xFF00695C)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFF00695C)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Beri Tanggapan")
+                                        }
+
+                                        if (isSubmitting.value) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.align(
+                                                    Alignment.CenterHorizontally
+                                                )
+                                            )
+                                        }
+
+                                        if (showDialog.value) {
+                                            AlertDialog(
+                                                onDismissRequest = { showDialog.value = false },
+                                                confirmButton = {
+                                                    TextButton(
+                                                        onClick = {
+                                                            showDialog.value = false
+                                                            isSubmitting.value = true
+
+                                                            val firestore =
+                                                                FirebaseFirestore.getInstance()
+                                                            val docRef =
+                                                                firestore.collection("outstanding")
+                                                                    .whereEqualTo(
+                                                                        "kode_alat",
+                                                                        kodeAlat
+                                                                    )
+                                                                    .whereEqualTo(
+                                                                        "tanggal",
+                                                                        checklist["tanggal"]
+                                                                    )
+                                                                    .whereEqualTo(
+                                                                        "item",
+                                                                        checklist["item"]
+                                                                    )
+                                                                    .limit(1)
+
+                                                            docRef.get()
+                                                                .addOnSuccessListener { result ->
+                                                                    if (!result.isEmpty) {
+                                                                        val doc =
+                                                                            result.documents[0]
+                                                                        val docId = doc.id
+                                                                        fun updateFirestore() {
+                                                                            val updateData = mapOf(
+                                                                                "tanggapan_bima" to perbaikanKeterangan.value,
+                                                                                "tanggapan_bima_timestamp" to FieldValue.serverTimestamp(),
+                                                                                "status_perbaikan" to "menunggu tanggapan teknik"
+                                                                            )
+
+                                                                            firestore.collection("outstanding")
+                                                                                .document(docId)
+                                                                                .update(updateData)
+                                                                                .addOnSuccessListener {
+                                                                                    Log.d(
+                                                                                        "UpdateFirestore",
+                                                                                        "Dokumen berhasil diupdate."
+                                                                                    )
+                                                                                    perbaikanKeterangan.value =
+                                                                                        ""
+                                                                                }
+                                                                                .addOnFailureListener {
+                                                                                    Log.e(
+                                                                                        "UpdateFirestore",
+                                                                                        "Gagal update dokumen: ${it.message}"
+                                                                                    )
+                                                                                }
+
+                                                                            val json =
+                                                                                JSONObject().apply {
+                                                                                    put(
+                                                                                        "kode_alat",
+                                                                                        kodeAlat
+                                                                                    )
+                                                                                    put(
+                                                                                        "tanggal",
+                                                                                        checklist["tanggal"]
+                                                                                    )
+                                                                                    put(
+                                                                                        "item",
+                                                                                        checklist["item"]
+                                                                                    )
+                                                                                    put(
+                                                                                        "tanggapan_bima",
+                                                                                        perbaikanKeterangan.value
+                                                                                    )
+                                                                                    put(
+                                                                                        "operator_email",
+                                                                                        doc.getString(
+                                                                                            "operator_email"
+                                                                                        ) ?: ""
+                                                                                    )
+                                                                                }
+
+                                                                            val client =
+                                                                                OkHttpClient()
+                                                                            val requestBody =
+                                                                                RequestBody.create(
+                                                                                    "application/json".toMediaTypeOrNull(),
+                                                                                    json.toString()
+                                                                                )
+                                                                            val request =
+                                                                                Request.Builder()
+                                                                                    .url("https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec")
+                                                                                    .post(
+                                                                                        requestBody
+                                                                                    )
+                                                                                    .build()
+
+                                                                            client.newCall(request)
+                                                                                .enqueue(object :
+                                                                                    Callback {
+                                                                                    override fun onFailure(
+                                                                                        call: Call,
+                                                                                        e: IOException
+                                                                                    ) {
+                                                                                        Log.e(
+                                                                                            "EmailNotif",
+                                                                                            "Gagal kirim email",
+                                                                                            e
+                                                                                        )
+                                                                                        isSubmitting.value =
+                                                                                            false
+                                                                                    }
+
+                                                                                    override fun onResponse(
+                                                                                        call: Call,
+                                                                                        response: Response
+                                                                                    ) {
+                                                                                        Log.d(
+                                                                                            "EmailNotif",
+                                                                                            "Email berhasil dikirim: ${response.body?.string()}"
+                                                                                        )
+                                                                                        isSubmitting.value =
+                                                                                            false
+                                                                                    }
+                                                                                })
+                                                                        }
+
+                                                                        updateFirestore()
+
+                                                                    } else {
+                                                                        isSubmitting.value = false
+                                                                    }
+                                                                }
+                                                        }
+                                                    ) {
+                                                        Text("Submit")
+                                                    }
+                                                },
+                                                dismissButton = {
+                                                    TextButton(onClick = {
+                                                        showDialog.value = false
+                                                        perbaikanKeterangan.value = ""
+                                                        perbaikanFotoUri.value = null
+                                                    }) {
+                                                        Text("Batal")
+                                                    }
+                                                },
+                                                text = {
+                                                    Column {
+                                                        Text("Upload foto perbaikan dan isi keterangan:")
+
+                                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                                        Card(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .height(150.dp)
+                                                                .clickable { imageLauncher.launch("image/*") },
+                                                            shape = RoundedCornerShape(12.dp),
+                                                            border = BorderStroke(1.dp, Color.Gray),
+                                                            colors = CardDefaults.cardColors(
+                                                                containerColor = Color(0xFFF8F8F8)
+                                                            )
+                                                        ) {
+                                                            Box(
+                                                                contentAlignment = Alignment.Center,
+                                                                modifier = Modifier.fillMaxSize()
+                                                            ) {
+                                                                if (perbaikanFotoUri.value != null) {
+                                                                    AsyncImage(
+                                                                        model = perbaikanFotoUri.value,
+                                                                        contentDescription = "Foto terpilih",
+                                                                        contentScale = ContentScale.Crop,
+                                                                        modifier = Modifier.fillMaxSize()
+                                                                    )
+                                                                } else {
+                                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                        Icon(
+                                                                            imageVector = Icons.Default.CameraAlt,
+                                                                            contentDescription = "Upload Foto",
+                                                                            tint = Color.Gray,
+                                                                            modifier = Modifier.size(
+                                                                                40.dp
+                                                                            )
+                                                                        )
+                                                                        Spacer(
+                                                                            modifier = Modifier.height(
+                                                                                8.dp
+                                                                            )
+                                                                        )
+                                                                        Text(
+                                                                            "Klik untuk pilih foto",
+                                                                            color = Color.Gray
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
                                                         }
+
+                                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                                        androidx.compose.material3.OutlinedTextField(
+                                                            value = perbaikanKeterangan.value,
+                                                            onValueChange = {
+                                                                perbaikanKeterangan.value = it
+                                                            },
+                                                            placeholder = { Text("Masukkan keterangan perbaikan...") },
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
                                                     }
-
-                                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                                    androidx.compose.material3.OutlinedTextField(
-                                                        value = perbaikanKeterangan.value,
-                                                        onValueChange = { perbaikanKeterangan.value = it },
-                                                        placeholder = { Text("Masukkan keterangan perbaikan...") },
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    )
                                                 }
-                                            }
-                                        )
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1340,7 +1837,7 @@ class OutstandingActivity : ComponentActivity() {
                     }
                 }
             }
-        )
+        }
     }
 
     fun uriToBitmap(context: Context, uri: Uri): Bitmap? {
