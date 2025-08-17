@@ -163,12 +163,27 @@ class OutstandingActivity : ComponentActivity() {
                             "gambar" to (data["gambar"] ?: ""),
                             "status_perbaikan" to (data["status_perbaikan"] ?: ""),
                             "operator_email" to (data["operator_email"] ?: ""),
-                            "tanggapan_bima" to (data["tanggapan_bima"] ?: ""),
-                            "instruksi_teknik" to (data["instruksi_teknik"] ?: "")
+
+                            // ✅ estimasi waktu pengerjaan
+                            "estimasi_hari" to (data["estimasi_hari"] ?: 0),
+                            "estimasi_jam" to (data["estimasi_jam"] ?: 0),
+                            "estimasi_menit" to (data["estimasi_menit"] ?: 0),
+
+                            // ✅ estimasi pengadaan sparepart
+                            "sparepart_estimasi_hari" to (data["sparepart_estimasi_hari"] ?: 0),
+                            "sparepart_estimasi_jam" to (data["sparepart_estimasi_jam"] ?: 0),
+                            "sparepart_estimasi_menit" to (data["sparepart_estimasi_menit"] ?: 0)
                         )
 
+                        // ✅ masukkan field dinamis
                         for ((key, value) in data) {
-                            if (key.startsWith("keterangan_perbaikan_") || key.startsWith("gambar_perbaikan_")) {
+                            if (
+                                key.startsWith("keterangan_perbaikan_") ||
+                                key.startsWith("gambar_perbaikan_") ||
+                                key.startsWith("tanggapan_bima_") ||
+                                key.startsWith("instruksi_teknik_") ||
+                                key.startsWith("keterangan_reject_")
+                            ) {
                                 item[key] = value ?: ""
                             }
                         }
@@ -278,6 +293,34 @@ class OutstandingActivity : ComponentActivity() {
                                             fontSize = 14.sp
                                         )
                                     }
+
+                                    val estimasiHari = checklist["estimasi_hari"]?.toString()?.toIntOrNull()
+                                    val estimasiJam = checklist["estimasi_jam"]?.toString()?.toIntOrNull()
+                                    val estimasiMenit = checklist["estimasi_menit"]?.toString()?.toIntOrNull()
+
+                                    if (estimasiHari != null || estimasiJam != null || estimasiMenit != null) {
+                                        Text(
+                                            text = "Estimasi Pengerjaan: ${estimasiHari ?: 0} hari, ${estimasiJam ?: 0} jam, ${estimasiMenit ?: 0} menit",
+                                            fontSize = 14.sp,
+                                            color = Color(0xFF388E3C), // hijau biar beda
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+
+                                    val spareHari = checklist["sparepart_estimasi_hari"]?.toString()?.toIntOrNull()
+                                    val spareJam = checklist["sparepart_estimasi_jam"]?.toString()?.toIntOrNull()
+                                    val spareMenit = checklist["sparepart_estimasi_menit"]?.toString()?.toIntOrNull()
+
+                                    if (spareHari != null || spareJam != null || spareMenit != null) {
+                                        Text(
+                                            text = "Estimasi Pengadaan Sparepart: ${spareHari ?: 0} hari, ${spareJam ?: 0} jam, ${spareMenit ?: 0} menit",
+                                            fontSize = 14.sp,
+                                            color = Color(0xFF6A1B9A), // ungu biar beda
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -400,7 +443,7 @@ class OutstandingActivity : ComponentActivity() {
                                                         }
 
                                                         Spacer(modifier = Modifier.height(12.dp))
-                                                        Text("Estimasi Waktu Pengadaan:")
+                                                        Text("Estimasi Waktu Pengerjaan:")
                                                         Row(
                                                             horizontalArrangement = Arrangement.SpaceBetween,
                                                             modifier = Modifier.fillMaxWidth()
@@ -434,7 +477,7 @@ class OutstandingActivity : ComponentActivity() {
                                                         }
 
                                                         Spacer(modifier = Modifier.height(12.dp))
-                                                        Text("Apakah Sparepart Indent?")
+                                                        Text("Apakah perlu indent sparepart?")
                                                         val options = listOf("Indent", "Tidak")
                                                         options.forEach { option ->
                                                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -692,50 +735,47 @@ class OutstandingActivity : ComponentActivity() {
                                                 confirmButton = {
                                                     TextButton(onClick = {
                                                         isSubmitting.value = true
-                                                        val firestore =
-                                                            FirebaseFirestore.getInstance()
-                                                        val docRef =
-                                                            firestore.collection("outstanding")
-                                                                .whereEqualTo("kode_alat", kodeAlat)
-                                                                .whereEqualTo(
-                                                                    "tanggal",
-                                                                    checklist["tanggal"]
-                                                                )
-                                                                .whereEqualTo(
-                                                                    "item",
-                                                                    checklist["item"]
-                                                                )
-                                                                .limit(1)
+                                                        val firestore = FirebaseFirestore.getInstance()
+                                                        val docRef = firestore.collection("outstanding")
+                                                            .whereEqualTo("kode_alat", kodeAlat)
+                                                            .whereEqualTo("tanggal", checklist["tanggal"])
+                                                            .whereEqualTo("item", checklist["item"])
+                                                            .limit(1)
 
                                                         docRef.get()
                                                             .addOnSuccessListener { result ->
                                                                 if (!result.isEmpty) {
                                                                     val doc = result.documents[0]
                                                                     val docId = doc.id
+                                                                    val data = doc.data ?: emptyMap()
 
-                                                                    val index = getNextRejectIndex(
-                                                                        doc.data ?: emptyMap()
-                                                                    )
-                                                                    val nextField =
-                                                                        "keterangan_reject_$index"
+                                                                    // cari index reject berikutnya
+                                                                    var maxIndex = 0
+                                                                    data.keys.forEach { key ->
+                                                                        if (key.startsWith("keterangan_reject_")) {
+                                                                            val idx = key.removePrefix("keterangan_reject_").toIntOrNull() ?: 0
+                                                                            if (idx > maxIndex) maxIndex = idx
+                                                                        }
+                                                                    }
+                                                                    val nextIndex = maxIndex + 1
+                                                                    val nextFieldReject = "keterangan_reject_$nextIndex"
+                                                                    val nextFieldRejectTimestamp = "keterangan_reject_timestamp_$nextIndex"
 
                                                                     firestore.collection("outstanding")
                                                                         .document(docId).update(
                                                                             mapOf(
-                                                                                nextField to perbaikanKeterangan.value,
-                                                                                "status_perbaikan" to "menunggu tanggapan PT BIMA",
-                                                                                "reject_timestamp" to FieldValue.serverTimestamp()
+                                                                                nextFieldReject to perbaikanKeterangan.value,
+                                                                                nextFieldRejectTimestamp to FieldValue.serverTimestamp(), // ✅ timestamp per reject
+                                                                                "status_perbaikan" to "menunggu tanggapan PT BIMA"
                                                                             )
                                                                         ).addOnSuccessListener {
-                                                                            perbaikanKeterangan.value =
-                                                                                ""
-                                                                            showDialogReject.value =
-                                                                                false
-                                                                            isSubmitting.value =
-                                                                                false
-                                                                            reloadTrigger.value =
-                                                                                !reloadTrigger.value
+                                                                            perbaikanKeterangan.value = ""
+                                                                            showDialogReject.value = false
+                                                                            isSubmitting.value = false
+                                                                            reloadTrigger.value = !reloadTrigger.value
                                                                         }
+                                                                } else {
+                                                                    isSubmitting.value = false
                                                                 }
                                                             }
                                                     }) {
@@ -1847,11 +1887,10 @@ class OutstandingActivity : ComponentActivity() {
 
         return when {
             status == "menunggu tanggapan pt bima" -> {
-                // cari instruksi_teknik_(index terbesar)
                 val instruksiFields = document.keys
-                    .filter { it.startsWith("instruksi_teknik_") }
+                    .filter { it.startsWith("keterangan_reject_") }
                     .mapNotNull { key ->
-                        val index = key.removePrefix("instruksi_teknik_").toIntOrNull()
+                        val index = key.removePrefix("keterangan_reject_").toIntOrNull()
                         index?.let { idx -> idx to key }
                     }
                     .sortedByDescending { it.first }
