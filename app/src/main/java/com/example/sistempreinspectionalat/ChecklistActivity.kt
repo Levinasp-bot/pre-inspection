@@ -312,15 +312,15 @@ class ChecklistActivity : ComponentActivity() {
                                                                         if (gambar != null) {
                                                                             uploadImageToCloudinary(gambar) { imageUrl ->
                                                                                 if (!imageUrl.isNullOrEmpty()) {
-                                                                                    updateData["gambar_perbaikan_$nextIndex"] = imageUrl
-                                                                                    updateData["keterangan_perbaikan_$nextIndex"] = keterangan
+                                                                                    updateData["gambar_$nextIndex"] = imageUrl
+                                                                                    updateData["keterangan_$nextIndex"] = keterangan
                                                                                     doc.reference.update(updateData)
                                                                                     Log.d("Checklist", "Update outstanding revisi → item=$item")
                                                                                 }
                                                                             }
                                                                         } else {
-                                                                            updateData["gambar_perbaikan_$nextIndex"] = ""
-                                                                            updateData["keterangan_perbaikan_$nextIndex"] = keterangan
+                                                                            updateData["gambar_$nextIndex"] = ""
+                                                                            updateData["keterangan_$nextIndex"] = keterangan
                                                                             doc.reference.update(updateData)
                                                                             Log.d("Checklist", "Update outstanding revisi tanpa gambar → item=$item")
                                                                         }
@@ -427,7 +427,7 @@ class ChecklistActivity : ComponentActivity() {
 
     fun getNextPerbaikanRevisionIndex(data: Map<String, Any>): Int {
         val existingIndexes = data.keys.mapNotNull { key ->
-            val match = Regex("gambar_perbaikan_(\\d+)").find(key)
+            val match = Regex("gambar_(\\d+)").find(key)
             match?.groupValues?.get(1)?.toInt()
         }
         return if (existingIndexes.isEmpty()) 1 else (existingIndexes.maxOrNull() ?: 0) + 1

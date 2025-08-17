@@ -517,41 +517,34 @@ class OutstandingActivity : ComponentActivity() {
                                                                             result.documents[0]
                                                                         val docId = doc.id
 
-                                                                        // Cari index terakhir dari field tanggapan_bima_x
-                                                                        val existingKeys =
-                                                                            doc.data?.keys?.filter {
-                                                                                it.startsWith("tanggapan_bima_")
-                                                                            } ?: emptyList()
-                                                                        val lastIndex =
-                                                                            existingKeys.mapNotNull {
-                                                                                it.removePrefix("tanggapan_bima_")
-                                                                                    .toIntOrNull()
-                                                                            }.maxOrNull() ?: 0
+                                                                        // Cari index terakhir dari field tanggapan_bima_x (exclude timestamp)
+                                                                        val existingKeys = doc.data?.keys?.filter {
+                                                                            it.startsWith("tanggapan_bima_") && !it.contains("timestamp")
+                                                                        } ?: emptyList()
 
-                                                                        val nextIndex =
-                                                                            lastIndex + 1
-                                                                        val fieldName =
-                                                                            "tanggapan_bima_$nextIndex"
+                                                                        val lastIndex = existingKeys.mapNotNull {
+                                                                            it.removePrefix("tanggapan_bima_").toIntOrNull()
+                                                                        }.maxOrNull() ?: 0
 
-                                                                        // Data yang akan diupdate
-                                                                        val updateData =
-                                                                            mutableMapOf<String, Any>(
-                                                                                fieldName to tanggapanList.filter { it.isNotBlank() },
-                                                                                "tanggapan_bima_timestamp" to FieldValue.serverTimestamp(),
-                                                                                "estimasi_hari" to estimasiHari.value,
-                                                                                "estimasi_jam" to estimasiJam.value,
-                                                                                "estimasi_menit" to estimasiMenit.value,
-                                                                                "status_sparepart" to selectedSparepartStatus.value,
-                                                                                "status_perbaikan" to "menunggu tanggapan teknik"
-                                                                            )
+                                                                        val nextIndex = lastIndex + 1
+                                                                        val fieldName = "tanggapan_bima_$nextIndex"
+                                                                        val tsFieldName = "tanggapan_bima_timestamp_$nextIndex"
+
+// Data yang akan diupdate
+                                                                        val updateData = mutableMapOf<String, Any>(
+                                                                            fieldName to tanggapanList.filter { it.isNotBlank() },
+                                                                            tsFieldName to FieldValue.serverTimestamp(),
+                                                                            "estimasi_hari" to estimasiHari.value,
+                                                                            "estimasi_jam" to estimasiJam.value,
+                                                                            "estimasi_menit" to estimasiMenit.value,
+                                                                            "status_sparepart" to selectedSparepartStatus.value,
+                                                                            "status_perbaikan" to "menunggu tanggapan teknik"
+                                                                        )
 
                                                                         if (selectedSparepartStatus.value == "Indent") {
-                                                                            updateData["sparepart_estimasi_hari"] =
-                                                                                sparepartHari.value
-                                                                            updateData["sparepart_estimasi_jam"] =
-                                                                                sparepartJam.value
-                                                                            updateData["sparepart_estimasi_menit"] =
-                                                                                sparepartMenit.value
+                                                                            updateData["sparepart_estimasi_hari"] = sparepartHari.value
+                                                                            updateData["sparepart_estimasi_jam"] = sparepartJam.value
+                                                                            updateData["sparepart_estimasi_menit"] = sparepartMenit.value
                                                                         }
 
                                                                         firestore.collection("outstanding")
@@ -819,10 +812,8 @@ class OutstandingActivity : ComponentActivity() {
                                                                         doc.data ?: emptyMap()
 
                                                                     // cari index instruksi berikutnya
-                                                                    val nextIndex =
-                                                                        getNextInstruksiIndex(data)
-                                                                    val nextFieldInstruksi =
-                                                                        "instruksi_teknik_$nextIndex"
+                                                                    val nextIndex = getNextInstruksiIndex(data)
+                                                                    val nextFieldInstruksi = "instruksi_teknik_$nextIndex"
 
                                                                     val sparepartStatus =
                                                                         doc.getString("status_sparepart")
@@ -834,12 +825,14 @@ class OutstandingActivity : ComponentActivity() {
                                                                             else -> "proses perbaikan alat oleh PT BIMA"
                                                                         }
 
+                                                                    val nextFieldTimestamp = "instruksi_teknik_timestamp_$nextIndex"
+
                                                                     firestore.collection("outstanding")
                                                                         .document(docId).update(
                                                                             mapOf(
                                                                                 nextFieldInstruksi to perbaikanKeterangan.value,
-                                                                                "status_perbaikan" to statusUpdate,
-                                                                                "konfirmasi_timestamp" to FieldValue.serverTimestamp()
+                                                                                nextFieldTimestamp to FieldValue.serverTimestamp(), // ✅ timestamp per instruksi
+                                                                                "status_perbaikan" to statusUpdate
                                                                             )
                                                                         ).addOnSuccessListener {
                                                                             perbaikanKeterangan.value =
@@ -1478,7 +1471,7 @@ class OutstandingActivity : ComponentActivity() {
                                                             onValueChange = {
                                                                 keteranganPerbaikan.value = it
                                                             },
-                                                            placeholder = { Text("Contoh: Part lama tidak sesuai, perlu diganti ulang...") },
+                                                            placeholder = { Text("Contoh: Part tidak sesuai, perlu diganti ulang...") },
                                                             modifier = Modifier.fillMaxWidth()
                                                         )
 
@@ -1513,7 +1506,6 @@ class OutstandingActivity : ComponentActivity() {
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        // Tombol Konfirmasi Perbaikan
                                         Button(
                                             onClick = {
                                                 val firestore = FirebaseFirestore.getInstance()
@@ -1527,8 +1519,8 @@ class OutstandingActivity : ComponentActivity() {
                                                     if (!result.isEmpty) {
                                                         val docId = result.documents[0].id
                                                         val update = mapOf(
-                                                            "status_perbaikan" to "menunggu verifikasi Manager Operasi",
-                                                            "konfirmasi_operator_timestamp" to FieldValue.serverTimestamp()
+                                                            "status_perbaikan" to "menunggu konfirmasi operator",
+                                                            "konfirmasi_teknik_timestamp" to FieldValue.serverTimestamp()
                                                         )
                                                         firestore.collection("outstanding")
                                                             .document(docId)
@@ -1555,10 +1547,10 @@ class OutstandingActivity : ComponentActivity() {
 
                                     if (statusPerbaikan == "perlu perbaikan ulang") {
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        val isSubmitting = remember { mutableStateOf(false) }
+
                                         OutlinedButton(
                                             onClick = { showImage.value = true },
-                                            shape = RoundedCornerShape(10.dp),
+                                            shape = RoundedCornerShape(50),
                                             colors = ButtonDefaults.outlinedButtonColors(
                                                 containerColor = Color.White,
                                                 contentColor = Color(0xFF003366)
@@ -1573,9 +1565,7 @@ class OutstandingActivity : ComponentActivity() {
                                             AlertDialog(
                                                 onDismissRequest = { showImage.value = false },
                                                 confirmButton = {
-                                                    TextButton(onClick = {
-                                                        showImage.value = false
-                                                    }) {
+                                                    TextButton(onClick = { showImage.value = false }) {
                                                         Text("Tutup")
                                                     }
                                                 },
@@ -1607,12 +1597,9 @@ class OutstandingActivity : ComponentActivity() {
                                             Text("Beri Tanggapan")
                                         }
 
+                                        val isSubmitting = remember { mutableStateOf(false) }
                                         if (isSubmitting.value) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.align(
-                                                    Alignment.CenterHorizontally
-                                                )
-                                            )
+                                            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                                         }
 
                                         if (showDialog.value) {
@@ -1624,133 +1611,98 @@ class OutstandingActivity : ComponentActivity() {
                                                             showDialog.value = false
                                                             isSubmitting.value = true
 
-                                                            val firestore =
-                                                                FirebaseFirestore.getInstance()
-                                                            val docRef =
-                                                                firestore.collection("outstanding")
-                                                                    .whereEqualTo(
-                                                                        "kode_alat",
-                                                                        kodeAlat
-                                                                    )
-                                                                    .whereEqualTo(
-                                                                        "tanggal",
-                                                                        checklist["tanggal"]
-                                                                    )
-                                                                    .whereEqualTo(
-                                                                        "item",
-                                                                        checklist["item"]
-                                                                    )
-                                                                    .limit(1)
+                                                            val firestore = FirebaseFirestore.getInstance()
+                                                            val docRef = firestore.collection("outstanding")
+                                                                .whereEqualTo("kode_alat", kodeAlat)
+                                                                .whereEqualTo("tanggal", checklist["tanggal"])
+                                                                .whereEqualTo("item", checklist["item"])
+                                                                .limit(1)
 
-                                                            docRef.get()
-                                                                .addOnSuccessListener { result ->
-                                                                    if (!result.isEmpty) {
-                                                                        val doc =
-                                                                            result.documents[0]
-                                                                        val docId = doc.id
-                                                                        fun updateFirestore() {
-                                                                            val updateData = mapOf(
-                                                                                "tanggapan_bima" to perbaikanKeterangan.value,
-                                                                                "tanggapan_bima_timestamp" to FieldValue.serverTimestamp(),
-                                                                                "status_perbaikan" to "menunggu tanggapan teknik"
-                                                                            )
+                                                            docRef.get().addOnSuccessListener { result ->
+                                                                if (!result.isEmpty) {
+                                                                    val doc = result.documents[0]
+                                                                    val docId = doc.id
+                                                                    fun updateFirestore(imageUrl: String?) {
+                                                                        val index = getNextPerbaikanRevisionIndex(doc.data ?: emptyMap())
+                                                                        val nextFieldImage = "gambar_perbaikan_$index"
+                                                                        val nextFieldText = "keterangan_perbaikan_$index"
 
-                                                                            firestore.collection("outstanding")
-                                                                                .document(docId)
-                                                                                .update(updateData)
-                                                                                .addOnSuccessListener {
-                                                                                    Log.d(
-                                                                                        "UpdateFirestore",
-                                                                                        "Dokumen berhasil diupdate."
-                                                                                    )
-                                                                                    perbaikanKeterangan.value =
-                                                                                        ""
-                                                                                }
-                                                                                .addOnFailureListener {
-                                                                                    Log.e(
-                                                                                        "UpdateFirestore",
-                                                                                        "Gagal update dokumen: ${it.message}"
-                                                                                    )
-                                                                                }
-
-                                                                            val json =
-                                                                                JSONObject().apply {
-                                                                                    put(
-                                                                                        "kode_alat",
-                                                                                        kodeAlat
-                                                                                    )
-                                                                                    put(
-                                                                                        "tanggal",
-                                                                                        checklist["tanggal"]
-                                                                                    )
-                                                                                    put(
-                                                                                        "item",
-                                                                                        checklist["item"]
-                                                                                    )
-                                                                                    put(
-                                                                                        "tanggapan_bima",
-                                                                                        perbaikanKeterangan.value
-                                                                                    )
-                                                                                    put(
-                                                                                        "operator_email",
-                                                                                        doc.getString(
-                                                                                            "operator_email"
-                                                                                        ) ?: ""
-                                                                                    )
-                                                                                }
-
-                                                                            val client =
-                                                                                OkHttpClient()
-                                                                            val requestBody =
-                                                                                RequestBody.create(
-                                                                                    "application/json".toMediaTypeOrNull(),
-                                                                                    json.toString()
-                                                                                )
-                                                                            val request =
-                                                                                Request.Builder()
-                                                                                    .url("https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec")
-                                                                                    .post(
-                                                                                        requestBody
-                                                                                    )
-                                                                                    .build()
-
-                                                                            client.newCall(request)
-                                                                                .enqueue(object :
-                                                                                    Callback {
-                                                                                    override fun onFailure(
-                                                                                        call: Call,
-                                                                                        e: IOException
-                                                                                    ) {
-                                                                                        Log.e(
-                                                                                            "EmailNotif",
-                                                                                            "Gagal kirim email",
-                                                                                            e
-                                                                                        )
-                                                                                        isSubmitting.value =
-                                                                                            false
-                                                                                    }
-
-                                                                                    override fun onResponse(
-                                                                                        call: Call,
-                                                                                        response: Response
-                                                                                    ) {
-                                                                                        Log.d(
-                                                                                            "EmailNotif",
-                                                                                            "Email berhasil dikirim: ${response.body?.string()}"
-                                                                                        )
-                                                                                        isSubmitting.value =
-                                                                                            false
-                                                                                    }
-                                                                                })
+                                                                        val updateData = mutableMapOf<String, Any>(
+                                                                            nextFieldText to perbaikanKeterangan.value,
+                                                                            "status_perbaikan" to "menunggu konfirmasi operator"
+                                                                        )
+                                                                        imageUrl?.let {
+                                                                            updateData[nextFieldImage] = it
                                                                         }
 
-                                                                        updateFirestore()
+                                                                        Log.d("UpdateFirestore", "Data yang dikirim: $updateData")
 
-                                                                    } else {
-                                                                        isSubmitting.value = false
+                                                                        firestore.collection("outstanding").document(docId).update(updateData)
+                                                                            .addOnSuccessListener {
+                                                                                Log.d("UpdateFirestore", "Dokumen berhasil diupdate.")
+                                                                                perbaikanKeterangan.value = ""
+                                                                                perbaikanFotoUri.value = null
+                                                                                checklistList.clear()
+                                                                                reloadTrigger.value = !reloadTrigger.value
+                                                                            }
+                                                                            .addOnFailureListener {
+                                                                                Log.e("UpdateFirestore", "Gagal update dokumen: ${it.message}")
+                                                                            }
+
+                                                                        val json = JSONObject().apply {
+                                                                            put("kode_alat", kodeAlat)
+                                                                            put("tanggal", checklist["tanggal"])
+                                                                            put("item", checklist["item"])
+                                                                            put("keterangan_perbaikan_0", perbaikanKeterangan.value)
+                                                                            put("gambar_perbaikan_0", imageUrl ?: "")
+                                                                            put("operator_email", doc.getString("operator_email") ?: "")
+                                                                        }
+
+                                                                        val client = OkHttpClient()
+                                                                        val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json.toString())
+                                                                        val request = Request.Builder()
+                                                                            .url("https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec")
+                                                                            .post(requestBody)
+                                                                            .build()
+
+                                                                        client.newCall(request).enqueue(object : Callback {
+                                                                            override fun onFailure(call: Call, e: IOException) {
+                                                                                Log.e("EmailNotif", "Gagal kirim email", e)
+                                                                                isSubmitting.value = false
+                                                                            }
+
+                                                                            override fun onResponse(call: Call, response: Response) {
+                                                                                Log.d("EmailNotif", "Email berhasil dikirim: ${response.body?.string()}")
+                                                                                isSubmitting.value = false
+                                                                            }
+                                                                        })
                                                                     }
+
+                                                                    val uri = perbaikanFotoUri.value
+                                                                    if (uri != null) {
+                                                                        val bitmap = uriToBitmap(this@OutstandingActivity, uri)
+                                                                        if (bitmap != null) {
+                                                                            uploadImageToCloudinary(bitmap) { imageUrl ->
+                                                                                if (imageUrl != null) {
+                                                                                    updateFirestore(imageUrl)
+                                                                                } else {
+                                                                                    Log.e("CloudinaryUpload", "Upload gagal, URL null")
+                                                                                    updateFirestore(null)
+                                                                                }
+                                                                            }
+                                                                        } else {
+                                                                            Log.e("CloudinaryUpload", "Gagal konversi URI ke Bitmap")
+                                                                            updateFirestore(null)
+                                                                        }
+                                                                    } else {
+                                                                        updateFirestore(null)
+                                                                    }
+                                                                } else {
+                                                                    isSubmitting.value = false
                                                                 }
+                                                            }
                                                         }
+
                                                     ) {
                                                         Text("Submit")
                                                     }
@@ -1777,9 +1729,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                 .clickable { imageLauncher.launch("image/*") },
                                                             shape = RoundedCornerShape(12.dp),
                                                             border = BorderStroke(1.dp, Color.Gray),
-                                                            colors = CardDefaults.cardColors(
-                                                                containerColor = Color(0xFFF8F8F8)
-                                                            )
+                                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8))
                                                         ) {
                                                             Box(
                                                                 contentAlignment = Alignment.Center,
@@ -1798,19 +1748,10 @@ class OutstandingActivity : ComponentActivity() {
                                                                             imageVector = Icons.Default.CameraAlt,
                                                                             contentDescription = "Upload Foto",
                                                                             tint = Color.Gray,
-                                                                            modifier = Modifier.size(
-                                                                                40.dp
-                                                                            )
+                                                                            modifier = Modifier.size(40.dp)
                                                                         )
-                                                                        Spacer(
-                                                                            modifier = Modifier.height(
-                                                                                8.dp
-                                                                            )
-                                                                        )
-                                                                        Text(
-                                                                            "Klik untuk pilih foto",
-                                                                            color = Color.Gray
-                                                                        )
+                                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                                        Text("Klik untuk pilih foto", color = Color.Gray)
                                                                     }
                                                                 }
                                                             }
@@ -1820,9 +1761,7 @@ class OutstandingActivity : ComponentActivity() {
 
                                                         androidx.compose.material3.OutlinedTextField(
                                                             value = perbaikanKeterangan.value,
-                                                            onValueChange = {
-                                                                perbaikanKeterangan.value = it
-                                                            },
+                                                            onValueChange = { perbaikanKeterangan.value = it },
                                                             placeholder = { Text("Masukkan keterangan perbaikan...") },
                                                             modifier = Modifier.fillMaxWidth()
                                                         )
@@ -1908,27 +1847,59 @@ class OutstandingActivity : ComponentActivity() {
 
         return when {
             status == "menunggu tanggapan pt bima" -> {
-                val value = document["keterangan"]?.toString()
-                Log.d("KeteranganDebug", "Mengambil dari 'keterangan': $value")
+                // cari instruksi_teknik_(index terbesar)
+                val instruksiFields = document.keys
+                    .filter { it.startsWith("instruksi_teknik_") }
+                    .mapNotNull { key ->
+                        val index = key.removePrefix("instruksi_teknik_").toIntOrNull()
+                        index?.let { idx -> idx to key }
+                    }
+                    .sortedByDescending { it.first }
+
+                val latestKey = instruksiFields.firstOrNull()?.second
+                val value = if (latestKey != null) {
+                    document[latestKey]?.toString()
+                } else {
+                    document["keterangan"]?.toString()
+                }
+                Log.d("KeteranganDebug", "Mengambil dari '${latestKey ?: "keterangan"}': $value")
                 value
             }
 
             status == "menunggu tanggapan teknik" -> {
-                val value = document["tanggapan_bima"]?.toString()
-                Log.d("KeteranganDebug", "Mengambil dari 'tanggapan_bima': $value")
+                val tanggapanFields = document.keys
+                    .filter { it.startsWith("tanggapan_bima_") && !it.contains("timestamp") }
+                    .mapNotNull { key ->
+                        val index = key.removePrefix("tanggapan_bima_").toIntOrNull()
+                        index?.let { idx -> idx to key }
+                    }
+                    .sortedByDescending { it.first }
+
+                val latestKey = tanggapanFields.firstOrNull()?.second
+                val value = latestKey?.let { document[it]?.toString() }
+                Log.d("KeteranganDebug", "Mengambil dari '$latestKey': $value")
                 value
             }
 
             status == "menunggu pengadaan sparepart" || status == "proses perbaikan alat oleh pt bima" -> {
-                val value = document["instruksi_teknik"]?.toString()
-                Log.d("KeteranganDebug", "Mengambil dari 'instruksi_teknik': $value")
+                val instruksiFields = document.keys
+                    .filter { it.startsWith("instruksi_teknik_") }
+                    .mapNotNull { key ->
+                        val index = key.removePrefix("instruksi_teknik_").toIntOrNull()
+                        index?.let { idx -> idx to key }
+                    }
+                    .sortedByDescending { it.first }
+
+                val latestKey = instruksiFields.firstOrNull()?.second ?: "instruksi_teknik"
+                val value = document[latestKey]?.toString()
+                Log.d("KeteranganDebug", "Mengambil dari '$latestKey': $value")
                 value
             }
 
-            status == "menunggu konfirmasi operator" || status == "perlu perbaikan ulang" -> {
+            status == "menunggu konfirmasi teknik" || status == "menunggu konfirmasi operator" || status == "perlu perbaikan ulang" -> {
                 val keteranganFields = document.keys
                     .filter { it.startsWith("keterangan_perbaikan_") }
-                    .mapNotNull { key: String ->
+                    .mapNotNull { key ->
                         val index = key.removePrefix("keterangan_perbaikan_").toIntOrNull()
                         index?.let { idx -> idx to key }
                     }
