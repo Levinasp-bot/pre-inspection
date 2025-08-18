@@ -86,9 +86,19 @@ fun DetailLaporanScreen(
                 val doc = checklistSnap.documents.first()
                 val dataMap = doc.data ?: emptyMap()
 
+                // 🔹 List kondisi valid
+                val validValues = setOf(
+                    "YA", "TIDAK",
+                    "RUSAK", "NYALA", "TIDAK NYALA",
+                    "BERSIH", "KOTOR",
+                    "NORMAL", "TIDAK NORMAL",
+                    "BERFUNGSI", "TIDAK BERFUNGSI"
+                )
+
+                // 🔹 Ambil hanya field dengan value yang sesuai
                 val itemStatuses = dataMap.filter { entry ->
                     val value = entry.value as? String ?: ""
-                    (value == "BAIK" || value == "TIDAK BAIK")
+                    validValues.contains(value)
                 }.map { it.key to (it.value as String) }
 
                 checklist = ChecklistLaporan(
@@ -109,6 +119,7 @@ fun DetailLaporanScreen(
             isLoading = false
         }
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -119,7 +130,10 @@ fun DetailLaporanScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
+                    .height(90.dp)
+                    .background(darkBlue)
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack) {
@@ -138,7 +152,6 @@ fun DetailLaporanScreen(
                 }
             }
 
-            // 🔹 Konten dengan rounded surface
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = Color.White,
@@ -160,7 +173,6 @@ fun DetailLaporanScreen(
                         }
 
                         checklist != null -> {
-                            // Info alat
                             Text(
                                 text = "Kode Alat: ${checklist!!.kode_alat}",
                                 fontSize = 18.sp,
@@ -200,11 +212,16 @@ fun DetailLaporanScreen(
                                             fontSize = 14.sp,
                                             color = darkBlue
                                         )
+                                        val statusColor = when (status.uppercase()) {
+                                            "YA", "RUSAK", "TIDAK NYALA", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI" -> Color.Red
+                                            "TIDAK", "NYALA", "BERSIH", "NORMAL", "BERFUNGSI"-> darkBlue // Dark Blue
+                                            else -> Color.Gray
+                                        }
                                         Text(
                                             text = status,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = if (status == "Normal") Color(0xFF2E7D32) else Color.Red
+                                            color = statusColor
                                         )
                                     }
                                     Divider()
@@ -228,5 +245,4 @@ fun DetailLaporanScreen(
             }
         }
     }
-
 }

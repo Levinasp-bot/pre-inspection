@@ -119,6 +119,7 @@ class OutstandingActivity : ComponentActivity() {
         val checklistList = remember { mutableStateListOf<Map<String, Any>>() }
         val alatMap = remember { mutableStateMapOf<String, Map<String, Any>>() }
         val showDialogTeknik = remember { mutableStateOf(false) }
+        val darkBlue = Color(0xFF003366)
         val showDialogBima = remember { mutableStateOf(false) }
         val showDialog = remember { mutableStateOf(false) }
         val showPerbaikanDialog = remember { mutableStateOf(false) }
@@ -208,6 +209,8 @@ class OutstandingActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(90.dp)
+                        .background(darkBlue)
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {

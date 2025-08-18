@@ -145,10 +145,11 @@ class ChecklistActivity : ComponentActivity() {
         Box(modifier = Modifier.fillMaxSize().background(darkBlue)) {
             Column(modifier = Modifier.fillMaxSize()) {
 
-                // HEADER
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(90.dp)
+                        .background(darkBlue)
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {

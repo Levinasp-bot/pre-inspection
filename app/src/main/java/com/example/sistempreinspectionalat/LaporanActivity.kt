@@ -98,7 +98,10 @@ fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
+                    .height(90.dp)
+                    .background(darkBlue)
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { (context as? Activity)?.finish() }) {
