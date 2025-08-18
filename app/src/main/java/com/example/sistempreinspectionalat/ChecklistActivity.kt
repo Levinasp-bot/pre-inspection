@@ -94,6 +94,14 @@ class ChecklistActivity : ComponentActivity() {
         val preInspectionItems = remember { mutableStateListOf<String>() }
         val preOperationItems = remember { mutableStateListOf<String>() }
         val statusAlat = remember { mutableStateOf("READY FOR USE") }
+        val kondisiTidakNormalSet = setOf(
+            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
+            "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
+        )
+
+        val itemTidakNormal = checklistItems.filter {
+            kondisiMap[it] in kondisiTidakNormalSet
+        }
 
         LaunchedEffect(kodeAlat) {
             firestore.collection("alat")
@@ -229,17 +237,25 @@ class ChecklistActivity : ComponentActivity() {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = statusAlat.value == "READY FOR USE",
-                                    onClick = { statusAlat.value = "READY FOR USE" }
+                                    onClick = { statusAlat.value = "READY FOR USE" },
+                                    enabled = true
                                 )
                                 Text("READY FOR USE")
+
                                 Spacer(modifier = Modifier.width(16.dp))
+
                                 RadioButton(
                                     selected = statusAlat.value == "BREAK DOWN",
-                                    onClick = { statusAlat.value = "BREAK DOWN" }
+                                    onClick = { statusAlat.value = "BREAK DOWN" },
+                                    enabled = itemTidakNormal.isNotEmpty() // ✅ hanya aktif kalau ada item tidak normal
                                 )
-                                Text("BREAK DOWN")
+                                Text(
+                                    "BREAK DOWN",
+                                    color = if (itemTidakNormal.isNotEmpty()) Color.Black else Color.Gray // biar keliatan nonaktif
+                                )
                             }
                         }
+
 
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
@@ -264,14 +280,6 @@ class ChecklistActivity : ComponentActivity() {
                                             data[key] = kondisiMap[item] ?: ""
                                         }
 
-                                        val kondisiTidakNormalSet = setOf(
-                                            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
-                                            "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
-                                        )
-
-                                        val itemTidakNormal = checklistItems.filter {
-                                            kondisiMap[it] in kondisiTidakNormalSet
-                                        }
 
                                         data["status"] = statusAlat.value
 
@@ -446,7 +454,7 @@ class ChecklistActivity : ComponentActivity() {
     ) {
         val context = LocalContext.current
         val showDialog = remember { mutableStateOf(false) }
-
+        val darkBlue = Color(0xFF003366)
         val cameraLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.TakePicturePreview()
         ) { bitmap ->
@@ -532,7 +540,16 @@ class ChecklistActivity : ComponentActivity() {
                         value = keterangan,
                         onValueChange = { onKeteranganChange(it) },
                         label = { Text("Keterangan") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = darkBlue,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedTextColor = darkBlue,
+                            unfocusedTextColor = darkBlue,
+                            focusedLabelColor = Color.Gray,
+                            unfocusedLabelColor = Color.Gray,
+                            cursorColor = darkBlue
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))

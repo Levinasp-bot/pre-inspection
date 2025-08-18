@@ -45,7 +45,7 @@ class DetailAlatActivity : ComponentActivity() {
 @Composable
 fun DetailAlatScreen(kodeAlat: String) {
     val context = LocalContext.current
-    val darkBlue = Color(0xFF0066B3)
+    val darkBlue = Color(0xFF003366)
     val firestore = FirebaseFirestore.getInstance()
     var alat by remember { mutableStateOf<Map<String, Any>?>(null) }
     var kondisiTerkini by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
@@ -99,26 +99,35 @@ fun DetailAlatScreen(kodeAlat: String) {
     }
 
     Box(modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .background(darkBlue)) {
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            TopAppBar(
-                title = {
-                    Text(kodeAlat, color = Color.White, fontWeight = FontWeight.Bold)
-                },
-                navigationIcon = {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { (context as? Activity)?.finish() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = darkBlue)
-            )
+                    Text(
+                        text = kodeAlat,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            }
 
             Surface(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 16.dp),
+                    .fillMaxSize(),
                 color = Color.White,
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
@@ -133,11 +142,9 @@ fun DetailAlatScreen(kodeAlat: String) {
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(kodeAlat, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                                Text(alat?.get("nama")?.toString() ?: "", fontSize = 14.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(kodeAlat, fontSize = 22.sp, color = darkBlue, fontWeight = FontWeight.Bold)
+                                Text(alat?.get("nama")?.toString() ?: "", fontSize = 14.sp, color = darkBlue)
                                 Text("Inspeksi Terakhir: $tanggalTerbaru", fontSize = 12.sp, color = Color.Gray)
-                                Text("Operator Terakhir: $operatorTerakhir", fontSize = 12.sp, color = Color.Gray)
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -153,7 +160,7 @@ fun DetailAlatScreen(kodeAlat: String) {
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Kondisi Terkini", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                Text("Kondisi Terkini", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = darkBlue)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 kondisiTerkini.forEach { (komponen, kondisi) ->
                                     Row(
@@ -163,12 +170,14 @@ fun DetailAlatScreen(kodeAlat: String) {
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = komponen,
-                                            fontSize = 13.sp // Ukuran kecil
+                                            text = komponen.replace("_", " "),
+                                            fontSize = 13.sp,
+                                            color = darkBlue// Ukuran kecil
                                         )
                                         Text(
                                             text = kondisi,
-                                            fontSize = 13.sp // Ukuran kecil
+                                            fontSize = 13.sp,
+                                            color = darkBlue// Ukuran kecil
                                         )
                                     }
                                 }
@@ -187,17 +196,19 @@ fun DetailAlatScreen(kodeAlat: String) {
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Riwayat Perbaikan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text("Riwayat Perbaikan", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = darkBlue)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 riwayatPerbaikan.forEach { item ->
                                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                                         Text(
                                             text = item["tanggal"]?.toString() ?: "",
-                                            fontWeight = FontWeight.SemiBold
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = darkBlue
                                         )
                                         Text(
                                             text = item["item"]?.toString() ?: "",
-                                            fontSize = 13.sp
+                                            fontSize = 13.sp,
+                                            color = darkBlue
                                         )
 
                                         // Cari key yang sesuai pola "keterangan_perbaikan_0", "keterangan_perbaikan_2", dst
@@ -216,11 +227,8 @@ fun DetailAlatScreen(kodeAlat: String) {
 
                                         Text(
                                             text = "Tindakan: $tindakanTerbaru",
-                                            fontSize = 13.sp
-                                        )
-                                        Text(
-                                            text = "Oleh: ${item["oleh"]?.toString() ?: ""}",
-                                            fontSize = 13.sp
+                                            fontSize = 13.sp,
+                                            color = darkBlue
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                     }

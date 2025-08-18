@@ -1,19 +1,26 @@
 package com.example.sistempreinspectionalat
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +58,8 @@ data class ReportItem(
 fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val reports = remember { mutableStateListOf<ReportItem>() }
+    val darkBlue = Color(0xFF003366)
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         firestore.collection("checklist")
@@ -79,49 +88,78 @@ fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
             }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Daftar Laporan") })
-        },
-        content = { padding ->
-            LazyColumn(
-                contentPadding = padding,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(darkBlue)
+    ) {
+        Column {
+            // 🔹 Custom TopBar
+            Box(
                 modifier = Modifier
-                    .padding(12.dp)
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
             ) {
-                items(reports) { report ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onItemClick(report) },
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color(0xFF003366)),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "${report.kodeAlat} - ${report.namaAlat}",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${report.tanggal} | ${report.shift}",
-                                fontSize = 14.sp,
-                                color = Color.DarkGray
-                            )
-                            Text(
-                                text = "Operator: ${report.operator}",
-                                fontSize = 14.sp,
-                                color = Color.DarkGray
-                            )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { (context as? Activity)?.finish() }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    Text(
+                        text = "Daftar Laporan",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            }
+
+            // 🔹 Konten dengan rounded surface
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color.White,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(reports) { report ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onItemClick(report) },
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(4.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "${report.kodeAlat} - ${report.namaAlat}",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = darkBlue
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "${report.tanggal} | ${report.shift}",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = "Operator: ${report.operator}",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-    )
+    }
 }

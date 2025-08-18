@@ -67,6 +67,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.Button
@@ -266,6 +267,7 @@ class OutstandingActivity : ComponentActivity() {
                                             text = "$kodeAlat – $namaAlat",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 16.sp,
+                                            color = Color(0xFF003366),
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
@@ -273,23 +275,31 @@ class OutstandingActivity : ComponentActivity() {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "${checklist["tanggal"]} | ${checklist["shift"]}",
+                                        color = Color(0xFF003366),
                                         fontSize = 13.sp
                                     )
 
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = "Status: ${checklist["status_perbaikan"]}",
+                                        color = Color(0xFF003366),
                                         fontSize = 14.sp
                                     )
-                                    Text(text = "Item: ${checklist["item"]}", fontSize = 14.sp)
+                                    Text(
+                                        text = "Item: ${checklist["item"]}",
+                                        color = Color(0xFF003366),
+                                        fontSize = 14.sp
+                                    )
                                     Text(
                                         text = "Kondisi: ${checklist["kondisi"]}",
+                                        color = Color(0xFF003366),
                                         fontSize = 14.sp
                                     )
                                     val latestKeterangan = getLatestKeteranganField(checklist)
                                     if (!latestKeterangan.isNullOrBlank()) {
                                         Text(
                                             text = "Keterangan: $latestKeterangan",
+                                            color = Color(0xFF003366),
                                             fontSize = 14.sp
                                         )
                                     }
@@ -302,8 +312,7 @@ class OutstandingActivity : ComponentActivity() {
                                         Text(
                                             text = "Estimasi Pengerjaan: ${estimasiHari ?: 0} hari, ${estimasiJam ?: 0} jam, ${estimasiMenit ?: 0} menit",
                                             fontSize = 14.sp,
-                                            color = Color(0xFF388E3C), // hijau biar beda
-                                            fontWeight = FontWeight.Medium
+                                            color = Color(0xFF003366)
                                         )
                                     }
 
@@ -315,14 +324,12 @@ class OutstandingActivity : ComponentActivity() {
                                         Text(
                                             text = "Estimasi Pengadaan Sparepart: ${spareHari ?: 0} hari, ${spareJam ?: 0} jam, ${spareMenit ?: 0} menit",
                                             fontSize = 14.sp,
-                                            color = Color(0xFF6A1B9A), // ungu biar beda
-                                            fontWeight = FontWeight.Medium
+                                            color = Color(0xFF003366)
                                         )
                                     }
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    Spacer(modifier = Modifier.height(8.dp))
 
                                     if (statusPerbaikan == "menunggu tanggapan PT BIMA") {
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -674,34 +681,19 @@ class OutstandingActivity : ComponentActivity() {
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        // Tombol Konfirmasi
-                                        Button(
-                                            onClick = { showDialogKonfirmasi.value = true },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF003366),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Konfirmasi")
-                                        }
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
                                         // Tombol Reject
-                                        OutlinedButton(
+                                        Button(
                                             onClick = { showDialogReject.value = true },
                                             shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.outlinedButtonColors(
-                                                containerColor = Color.White,
-                                                contentColor = Color.Red
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color.Red,   // warna background
+                                                contentColor = Color.White    // warna teks/icon
                                             ),
-                                            border = BorderStroke(1.dp, Color.Red),
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Text("Reject")
                                         }
+
 
                                         fun getNextRejectIndex(data: Map<String, Any>): Int {
                                             var index = 1
@@ -807,6 +799,21 @@ class OutstandingActivity : ComponentActivity() {
                                             }
                                             return maxIndex + 1
                                         }
+
+                                        // Tombol Konfirmasi
+                                        Button(
+                                            onClick = { showDialogKonfirmasi.value = true },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF43A047),
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Konfirmasi")
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
 
                                         if (showDialogKonfirmasi.value) {
                                             AlertDialog(
@@ -1004,7 +1011,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                         .document(docId)
                                                                         .update(
                                                                             mapOf(
-                                                                                "status_perbaikan" to "proses perbaikan alat oleh PT Bima",
+                                                                                "status_perbaikan" to "proses perbaikan alat oleh PT BIMA",
                                                                                 "sparepart_ready_timestamp" to FieldValue.serverTimestamp()
                                                                             )
                                                                         )
@@ -1037,7 +1044,7 @@ class OutstandingActivity : ComponentActivity() {
                                         }
                                     }
 
-                                    if (statusPerbaikan == "proses perbaikan alat oleh PT Bima") {
+                                    if (statusPerbaikan == "proses perbaikan alat oleh PT BIMA") {
                                         Spacer(modifier = Modifier.height(8.dp))
                                         val isSubmitting = remember { mutableStateOf(false) }
                                         OutlinedButton(
@@ -1238,7 +1245,7 @@ class OutstandingActivity : ComponentActivity() {
                                                 },
                                                 title = {
                                                     Text(
-                                                        "Tanggapan Perbaikan",
+                                                        "Laporan Perbaikan",
                                                         style = MaterialTheme.typography.titleLarge
                                                     )
                                                 },
@@ -1258,13 +1265,21 @@ class OutstandingActivity : ComponentActivity() {
 
                                                         Spacer(modifier = Modifier.height(12.dp))
 
-                                                        Button(
-                                                            onClick = { launcher.launch("image/*") },
-                                                            colors = ButtonDefaults.buttonColors(
-                                                                containerColor = Color(0xFF005BBB)
-                                                            )
+                                                        // ✅ Ganti Button jadi Column clickable
+                                                        Column(
+                                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .clickable { launcher.launch("image/*") }
+                                                                .padding(16.dp)
                                                         ) {
-                                                            Text("Pilih Foto", color = Color.White)
+                                                            Icon(
+                                                                imageVector = Icons.Default.AddCircle,
+                                                                contentDescription = "Upload",
+                                                                modifier = Modifier.size(48.dp),
+                                                                tint = Color.Gray
+                                                            )
+                                                            Text("Ambil atau Pilih Foto", color = Color.Gray)
                                                         }
 
                                                         Spacer(modifier = Modifier.height(12.dp))
@@ -1517,13 +1532,21 @@ class OutstandingActivity : ComponentActivity() {
 
                                                         Spacer(modifier = Modifier.height(12.dp))
 
-                                                        Button(
-                                                            onClick = { launcher.launch("image/*") },
-                                                            colors = ButtonDefaults.buttonColors(
-                                                                containerColor = Color(0xFF005BBB)
-                                                            )
+                                                        // ✅ Ganti Button jadi Column clickable
+                                                        Column(
+                                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .clickable { launcher.launch("image/*") }
+                                                                .padding(16.dp)
                                                         ) {
-                                                            Text("Pilih Foto", color = Color.White)
+                                                            Icon(
+                                                                imageVector = Icons.Default.AddCircle,
+                                                                contentDescription = "Upload",
+                                                                modifier = Modifier.size(48.dp),
+                                                                tint = Color.Gray
+                                                            )
+                                                            Text("Ambil atau Pilih Foto", color = Color.Gray)
                                                         }
 
                                                         Spacer(modifier = Modifier.height(12.dp))

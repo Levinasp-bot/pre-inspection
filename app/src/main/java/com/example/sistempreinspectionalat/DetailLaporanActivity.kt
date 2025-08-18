@@ -16,6 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
@@ -58,7 +60,8 @@ fun DetailLaporanScreen(
 ) {
     val TAG = "DetailLaporanScreen"
     val firestore = FirebaseFirestore.getInstance()
-
+    val darkBlue = Color(0xFF003366)
+    val context = LocalContext.current
     var checklist by remember { mutableStateOf<ChecklistLaporan?>(null) }
     var items by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -106,103 +109,124 @@ fun DetailLaporanScreen(
             isLoading = false
         }
     }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Detail Laporan", color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0066B3)
-                )
-            )
-        },
-        containerColor = Color(0xFF0066B3)
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .background(Color(0xFF0066B3))
-        ) {
-            Column(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(darkBlue)
+    ) {
+        Column {
+            // 🔹 Custom TopBar
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        color = Color.White,
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                    )
-                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
             ) {
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
-                } else if (checklist != null) {
                     Text(
-                        text = "Kode Alat: ${checklist!!.kode_alat}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontSize = 18.sp,
-                        color = Color.Black
+                        text = "Detail Laporan",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
                     )
-                    Text(
-                        text = "Shift: ${checklist!!.shift}",
-                        color = Color.Black
-                    )
-                    Text(
-                        text = "Tanggal: ${checklist!!.tanggal}",
-                        color = Color.Black
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
 
-                    Text(
-                        text = "Checklist",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontSize = 16.sp,
-                        color = Color.Black
-                    )
-                    Divider(modifier = Modifier.padding(vertical = 4.dp))
-                    LazyColumn {
-                        items(items) { (itemName, status) ->
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
+            // 🔹 Konten dengan rounded surface
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color.White,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    when {
+                        isLoading -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+
+                        checklist != null -> {
+                            // Info alat
+                            Text(
+                                text = "Kode Alat: ${checklist!!.kode_alat}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = darkBlue
+                            )
+                            Text(
+                                text = "Shift: ${checklist!!.shift}",
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = "Tanggal: ${checklist!!.tanggal}",
+                                color = Color.Gray
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Checklist section
+                            Text(
+                                text = "Checklist",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = darkBlue
+                            )
+                            Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(items) { (itemName, status) ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = itemName,
+                                            fontSize = 14.sp,
+                                            color = darkBlue
+                                        )
+                                        Text(
+                                            text = status,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = if (status == "Normal") Color(0xFF2E7D32) else Color.Red
+                                        )
+                                    }
+                                    Divider()
+                                }
+                            }
+                        }
+
+                        else -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = itemName,
-                                    fontSize = 14.sp,
-                                    color = Color.Black
-                                )
-                                Text(
-                                    text = status,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Black
+                                    text = "Data tidak ditemukan atau gagal dimuat.",
+                                    color = darkBlue
                                 )
                             }
-                            Divider()
                         }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Data tidak ditemukan atau gagal dimuat.",
-                            color = Color.Black
-                        )
                     }
                 }
             }
         }
     }
+
 }
