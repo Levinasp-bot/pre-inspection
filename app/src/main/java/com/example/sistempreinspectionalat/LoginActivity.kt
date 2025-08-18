@@ -227,8 +227,10 @@ fun LoginScreen() {
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         TextButton(
-                            onClick = { /* navigasi */ },
-                            contentPadding = PaddingValues(0.dp) // ini penting
+                            onClick = {
+                                context.startActivity(Intent(context, RegisterActivity::class.java))
+                            },
+                            contentPadding = PaddingValues(0.dp) // tetap penting
                         ) {
                             Text(
                                 text = "Daftar",

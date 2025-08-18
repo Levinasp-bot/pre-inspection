@@ -41,6 +41,7 @@ class RegisterActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun RegisterScreen() {
@@ -50,6 +51,7 @@ fun RegisterScreen() {
     var nipp by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var selectedRole by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -150,6 +152,47 @@ fun RegisterScreen() {
                         )
                     )
 
+                    var selectedRole by remember { mutableStateOf("") }
+                    val roles = listOf("PT Bima", "Teknik", "Operator", "Manager Operasi", "DBM", "Branch Manager")
+                    var expanded by remember { mutableStateOf(false) }
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedRole,
+                            onValueChange = { selectedRole = it },
+                            readOnly = true,
+                            label = { Text("Role", color = Color(0xFF0066B3)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color.White,
+                                focusedContainerColor = Color.White,
+                                unfocusedTextColor = Color(0xFF0066B3),
+                                focusedTextColor = Color(0xFF0066B3)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            roles.forEach { role ->
+                                DropdownMenuItem(
+                                    text = { Text(role) },
+                                    onClick = {
+                                        selectedRole = role
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
@@ -172,7 +215,7 @@ fun RegisterScreen() {
                     Button(
                         onClick = {
                             isLoading = true
-                            registerUser(name, email, nipp, password) { success, message ->
+                            registerUser(name, email, nipp, password, selectedRole) { success, message ->
                                 isLoading = false
                                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                 if (success) {
@@ -221,6 +264,7 @@ fun registerUser(
     email: String,
     nipp: String,
     password: String,
+    role: String,
     onResult: (Boolean, String) -> Unit
 ) {
     val auth = FirebaseAuth.getInstance()
@@ -232,10 +276,11 @@ fun registerUser(
 
             if (userId != null) {
                 val data = hashMapOf(
-                    "uid" to userId, // ⬅️ Tambahkan ini
+                    "uid" to userId,
                     "name" to name,
                     "email" to email,
-                    "nipp" to nipp
+                    "nipp" to nipp,
+                    "role" to role // ✅ pakai parameter
                 )
 
                 db.collection("users").document(userId)
@@ -254,4 +299,5 @@ fun registerUser(
             onResult(false, "Registrasi gagal: ${it.localizedMessage}")
         }
 }
+
 
