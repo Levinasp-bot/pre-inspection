@@ -33,6 +33,9 @@
             android:name=".OutstandingActivity"
             android:exported="false" />
         <activity
+            android:name=".DetailOutstandingActivity"
+            android:exported="false" />
+        <activity
             android:name=".AlatActivity"
             android:exported="false" />
         <activity

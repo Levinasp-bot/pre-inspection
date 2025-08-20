@@ -280,7 +280,7 @@ fun registerUser(
                     "name" to name,
                     "email" to email,
                     "nipp" to nipp,
-                    "role" to role // ✅ pakai parameter
+                    "role" to role
                 )
 
                 db.collection("users").document(userId)
