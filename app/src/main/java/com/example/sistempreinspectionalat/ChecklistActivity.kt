@@ -93,7 +93,7 @@ class ChecklistActivity : ComponentActivity() {
         val fotoMap = remember { mutableStateMapOf<String, Bitmap?>() }
         val preInspectionItems = remember { mutableStateListOf<String>() }
         val preOperationItems = remember { mutableStateListOf<String>() }
-        val statusAlat = remember { mutableStateOf("READY FOR USE") }
+//      val statusAlat = remember { mutableStateOf("READY FOR USE") }
         val kondisiTidakNormalSet = setOf(
             "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
             "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
@@ -134,11 +134,21 @@ class ChecklistActivity : ComponentActivity() {
 
         LaunchedEffect(Unit) {
             val uid = auth.currentUser?.uid
+            Log.d("Checklist", "UID login: $uid")
+
             if (!uid.isNullOrEmpty()) {
                 val snapshot = firestore.collection("users").whereEqualTo("uid", uid).get().await()
+                Log.d("Checklist", "Jumlah dokumen user ditemukan: ${snapshot.size()}")
+
                 if (!snapshot.isEmpty) {
-                    userName.value = snapshot.documents.first().getString("nama") ?: ""
+                    val nama = snapshot.documents.first().getString("nama")
+                    Log.d("Checklist", "Nama operator dari Firestore: $nama")
+                    userName.value = nama ?: ""
+                } else {
+                    Log.e("Checklist", "Dokumen user dengan UID $uid tidak ditemukan di Firestore")
                 }
+            } else {
+                Log.e("Checklist", "auth.currentUser null atau uid kosong")
             }
         }
 
@@ -227,36 +237,35 @@ class ChecklistActivity : ComponentActivity() {
                             }
                         }
 
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Status Alat",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = statusAlat.value == "READY FOR USE",
-                                    onClick = { statusAlat.value = "READY FOR USE" },
-                                    enabled = true
-                                )
-                                Text("READY FOR USE")
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                RadioButton(
-                                    selected = statusAlat.value == "BREAK DOWN",
-                                    onClick = { statusAlat.value = "BREAK DOWN" },
-                                    enabled = itemTidakNormal.isNotEmpty() // ✅ hanya aktif kalau ada item tidak normal
-                                )
-                                Text(
-                                    "BREAK DOWN",
-                                    color = if (itemTidakNormal.isNotEmpty()) Color.Black else Color.Gray // biar keliatan nonaktif
-                                )
-                            }
-                        }
-
+//                        item {
+//                            Spacer(modifier = Modifier.height(16.dp))
+//                            Text(
+//                                text = "Status Alat",
+//                                fontSize = 16.sp,
+//                                fontWeight = FontWeight.Bold,
+//                                color = Color.Black
+//                            )
+//                            Row(verticalAlignment = Alignment.CenterVertically) {
+//                                RadioButton(
+//                                    selected = statusAlat.value == "READY FOR USE",
+//                                    onClick = { statusAlat.value = "READY FOR USE" },
+//                                    enabled = true
+//                                )
+//                                Text("READY FOR USE")
+//
+//                                Spacer(modifier = Modifier.width(16.dp))
+//
+//                                RadioButton(
+//                                    selected = statusAlat.value == "BREAK DOWN",
+//                                    onClick = { statusAlat.value = "BREAK DOWN" },
+//                                    enabled = itemTidakNormal.isNotEmpty() // ✅ hanya aktif kalau ada item tidak normal
+//                                )
+//                                Text(
+//                                    "BREAK DOWN",
+//                                    color = if (itemTidakNormal.isNotEmpty()) Color.Black else Color.Gray // biar keliatan nonaktif
+//                                )
+//                            }
+//                        }
 
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
@@ -282,7 +291,7 @@ class ChecklistActivity : ComponentActivity() {
                                         }
 
 
-                                        data["status"] = statusAlat.value
+                                        //data["status"] = statusAlat.value
 
                                         // 🔹 STEP 1: simpan ke checklist
                                         firestore.collection("checklist")
@@ -354,7 +363,7 @@ class ChecklistActivity : ComponentActivity() {
                                                                                     "shift" to shift,
                                                                                     "status_perbaikan" to "menunggu tanggapan PT BIMA",
                                                                                     "tanggal" to tanggal,
-                                                                                    "status" to statusAlat.value,
+                                                                                    //"status" to statusAlat.value,
                                                                                     "timestamp_laporan" to FieldValue.serverTimestamp()
                                                                                 )
                                                                                 firestore.collection("outstanding").add(dataOutstanding)
@@ -373,7 +382,7 @@ class ChecklistActivity : ComponentActivity() {
                                                                             "shift" to shift,
                                                                             "status_perbaikan" to "menunggu tanggapan PT BIMA",
                                                                             "tanggal" to tanggal,
-                                                                            "status" to statusAlat.value,
+                                                                            //"status" to statusAlat.value,
                                                                             "timestamp_laporan" to FieldValue.serverTimestamp()
                                                                         )
                                                                         firestore.collection("outstanding").add(dataOutstanding)
@@ -396,14 +405,14 @@ class ChecklistActivity : ComponentActivity() {
                                                 }
 
                                                 // 🔹 STEP 4: update status alat
-                                                firestore.collection("alat")
-                                                    .whereEqualTo("kode_alat", kodeAlat)
-                                                    .get()
-                                                    .addOnSuccessListener { result ->
-                                                        val alatDoc = result.documents.firstOrNull()
-                                                        alatDoc?.reference?.update("status", statusAlat.value)
-                                                        Log.d("Checklist", "Status alat $kodeAlat diupdate → ${statusAlat.value}")
-                                                    }
+//                                                firestore.collection("alat")
+//                                                    .whereEqualTo("kode_alat", kodeAlat)
+//                                                    .get()
+//                                                    .addOnSuccessListener { result ->
+//                                                        val alatDoc = result.documents.firstOrNull()
+//                                                        alatDoc?.reference?.update("status", statusAlat.value)
+//                                                        Log.d("Checklist", "Status alat $kodeAlat diupdate → ${statusAlat.value}")
+//                                                    }
 
                                                 Toast.makeText(context, "Checklist berhasil disimpan", Toast.LENGTH_SHORT).show()
 
@@ -442,7 +451,6 @@ class ChecklistActivity : ComponentActivity() {
         return if (existingIndexes.isEmpty()) 1 else (existingIndexes.maxOrNull() ?: 0) + 1
     }
 
-
     @Composable
     fun ChecklistItemRow(
         item: String,
@@ -476,11 +484,14 @@ class ChecklistActivity : ComponentActivity() {
             item.contains("lampu", ignoreCase = true) -> listOf("NYALA", "TIDAK NYALA")
             item.contains("ban", ignoreCase = true) -> listOf("YA", "TIDAK")
             item.contains("tangga", ignoreCase = true) -> listOf("RUSAK", "TIDAK")
-            item.contains("kabin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
+            item.contains("area kabin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
+            item.contains("ruang mesin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")   // ✅ Tambah
+            item.contains("sekitar alat", ignoreCase = true) -> listOf("BERSIH", "KOTOR") // ✅ Tambah
             item.contains("gerakan", ignoreCase = true) -> listOf("NORMAL", "TIDAK NORMAL")
             item.contains("slewing", ignoreCase = true) -> listOf("BERFUNGSI", "TIDAK BERFUNGSI")
             else -> listOf("BAIK", "TIDAK BAIK")
         }
+
 
         if (showDialog.value) {
             AlertDialog(
@@ -640,4 +651,3 @@ class ChecklistActivity : ComponentActivity() {
         })
     }
 }
-

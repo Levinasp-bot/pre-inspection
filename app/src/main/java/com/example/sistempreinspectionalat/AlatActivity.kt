@@ -124,6 +124,13 @@ fun AlatScreen() {
 
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(filteredList) { alat ->
+                            val status = alat["status"] ?: ""
+                            val containerColor = if (status.equals("BREAK DOWN", ignoreCase = true)) {
+                                Color.Red.copy(alpha = 0.2f) // merah muda biar teks masih kelihatan
+                            } else {
+                                Color.White
+                            }
+
                             OutlinedCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -136,7 +143,7 @@ fun AlatScreen() {
                                         context.startActivity(intent)
                                     },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
+                                colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
                                 border = BorderStroke(1.dp, darkBlue)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
@@ -147,8 +154,8 @@ fun AlatScreen() {
                                         fontSize = 14.sp
                                     )
                                     Text(
-                                        text = "Status: ${alat["status"] ?: "-"}",
-                                        color = darkBlue,
+                                        text = "Status: $status",
+                                        color = if (status.equals("BREAK DOWN", ignoreCase = true)) Color.Red else darkBlue,
                                         fontWeight = FontWeight.Medium,
                                         fontSize = 13.sp
                                     )

@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class DetailOutstandingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -125,24 +127,31 @@ fun DetailOutstandingScreen(
                 ) {
                     // ==== OPERATOR ====
                     item {
+                        // Operator Row
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(
                                 painter = painterResource(id = R.drawable.operator),
                                 contentDescription = null,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
+                                modifier = Modifier.size(40.dp).clip(CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Operator",
-                                color = darkBlue,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier
-                                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
-                                    .background(Color.White, RoundedCornerShape(16.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            )
+                            Column {
+                                Text(
+                                    text = "Operator",
+                                    color = darkBlue,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier
+                                        .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                                        .background(Color.White, RoundedCornerShape(16.dp))
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                )
+                                val ts = dataDetail.value?.get("timestamp_laporan") as? com.google.firebase.Timestamp
+                                Text(
+                                    text = formatTimestamp(ts),
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
                     item {
@@ -217,10 +226,14 @@ fun DetailOutstandingScreen(
                                     }
                                 }
 
-                        items(listTanggapan.size) { idx ->
+                            items(listTanggapan.size) { idx ->
                                 val itemBima = listTanggapan[idx]
                                 val tanggapanList = itemBima["tanggapanList"] as List<String>
                                 val index = itemBima["index"] as String
+
+                                // 🔹 Tambahkan ini untuk ambil timestamp
+                                val ts = detail["tanggapan_bima_timestamp_$index"] as? com.google.firebase.Timestamp
+                                val timestampStr = formatTimestamp(ts)
 
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -232,15 +245,23 @@ fun DetailOutstandingScreen(
                                             .clip(CircleShape)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "PT BIMA",
-                                        color = darkBlue,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier
-                                            .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
-                                            .background(Color.White, RoundedCornerShape(16.dp))
-                                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                                    )
+                                    Column {
+                                        Text(
+                                            text = "PT BIMA",
+                                            color = darkBlue,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier
+                                                .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                                                .background(Color.White, RoundedCornerShape(16.dp))
+                                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                                        )
+                                        // 🔹 Tampilkan timestamp di bawah role
+                                        Text(
+                                            text = timestampStr,
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
                                 }
 
                                 Card(
@@ -283,24 +304,44 @@ fun DetailOutstandingScreen(
 
                                 if (rejectList.isNotEmpty() || instruksiList.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(16.dp))
+
+                                    // 🔹 Ambil timestamp dari reject atau instruksi
+                                    val tsReject = detail["keterangan_reject_timestamp_$index"] as? com.google.firebase.Timestamp
+                                    val tsInstruksi = detail["instruksi_teknik_timestamp_$index"] as? com.google.firebase.Timestamp
+
+                                    // pilih timestamp mana yang ada
+                                    val timestampStr = when {
+                                        tsReject != null -> formatTimestamp(tsReject)
+                                        tsInstruksi != null -> formatTimestamp(tsInstruksi)
+                                        else -> "-"
+                                    }
+
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Image(
-                                            painter = painterResource(id = R.drawable.teknik), // ganti dengan icon teknik
+                                            painter = painterResource(id = R.drawable.teknik),
                                             contentDescription = null,
                                             modifier = Modifier
                                                 .size(40.dp)
                                                 .clip(CircleShape)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "Teknik",
-                                            color = darkBlue,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier
-                                                .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
-                                                .background(Color.White, RoundedCornerShape(16.dp))
-                                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                                        )
+                                        Column {
+                                            Text(
+                                                text = "Teknik",
+                                                color = darkBlue,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier
+                                                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                                                    .background(Color.White, RoundedCornerShape(16.dp))
+                                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                                            )
+                                            // 🔹 Tampilkan timestamp
+                                            Text(
+                                                text = timestampStr,
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
                                     }
 
                                     Card(
@@ -334,4 +375,10 @@ fun DetailOutstandingScreen(
             }
         }
     }
+}
+
+fun formatTimestamp(ts: com.google.firebase.Timestamp?): String {
+    if (ts == null) return "-"
+    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    return sdf.format(ts.toDate())
 }

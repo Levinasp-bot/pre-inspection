@@ -115,16 +115,16 @@ class OutstandingActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun OutstandingChecklistScreen() {
-        val firestore = FirebaseFirestore.getInstance()
         val checklistList = remember { mutableStateListOf<Map<String, Any>>() }
         val alatMap = remember { mutableStateMapOf<String, Map<String, Any>>() }
-        val showDialogTeknik = remember { mutableStateOf(false) }
         val darkBlue = Color(0xFF003366)
         val showDialogBima = remember { mutableStateOf(false) }
         val showDialog = remember { mutableStateOf(false) }
         val showPerbaikanDialog = remember { mutableStateOf(false) }
         val keteranganPerbaikan = remember { mutableStateOf("") }
-        val perbaikanKeterangan = remember { mutableStateOf("") }
+        val perbaikanKeterangan = remember { mutableStateListOf("") }
+        val rejectKeterangan = remember { mutableStateListOf("") }
+        val konfirmasiKeterangan = remember { mutableStateListOf("") }
         val perbaikanFotoUri = remember { mutableStateOf<Uri?>(null) }
         val context = LocalContext.current
         val reloadTrigger = remember { mutableStateOf(false) }
@@ -704,20 +704,32 @@ class OutstandingActivity : ComponentActivity() {
                                             AlertDialog(
                                                 onDismissRequest = {
                                                     showDialogReject.value = false
+                                                    rejectKeterangan.clear()
+                                                    rejectKeterangan.add("") // reset ke satu input kosong
                                                 },
                                                 title = { Text("Reject Perbaikan") },
                                                 text = {
                                                     Column {
                                                         Text("Masukkan alasan reject:")
                                                         Spacer(modifier = Modifier.height(8.dp))
-                                                        OutlinedTextField(
-                                                            value = perbaikanKeterangan.value,
-                                                            onValueChange = {
-                                                                perbaikanKeterangan.value = it
-                                                            },
-                                                            placeholder = { Text("Keterangan reject...") },
-                                                            modifier = Modifier.fillMaxWidth()
-                                                        )
+
+                                                        // loop semua field
+                                                        rejectKeterangan.forEachIndexed { index, value ->
+                                                            OutlinedTextField(
+                                                                value = value,
+                                                                onValueChange = { newValue ->
+                                                                    rejectKeterangan[index] = newValue
+                                                                },
+                                                                placeholder = { Text("Keterangan reject...") },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
+                                                            Spacer(modifier = Modifier.height(8.dp))
+                                                        }
+
+                                                        // tombol tambah alasan baru
+                                                        TextButton(onClick = { rejectKeterangan.add("") }) {
+                                                            Text("+ Tambah Alasan Reject")
+                                                        }
                                                     }
                                                 },
                                                 confirmButton = {
@@ -752,12 +764,14 @@ class OutstandingActivity : ComponentActivity() {
                                                                     firestore.collection("outstanding")
                                                                         .document(docId).update(
                                                                             mapOf(
-                                                                                nextFieldReject to perbaikanKeterangan.value,
-                                                                                nextFieldRejectTimestamp to FieldValue.serverTimestamp(), // ✅ timestamp per reject
+                                                                                // simpan langsung list (bukan string tunggal)
+                                                                                nextFieldReject to rejectKeterangan.filter { it.isNotBlank() },
+                                                                                nextFieldRejectTimestamp to FieldValue.serverTimestamp(),
                                                                                 "status_perbaikan" to "menunggu tanggapan PT BIMA"
                                                                             )
                                                                         ).addOnSuccessListener {
-                                                                            perbaikanKeterangan.value = ""
+                                                                            rejectKeterangan.clear()
+                                                                            rejectKeterangan.add("")
                                                                             showDialogReject.value = false
                                                                             isSubmitting.value = false
                                                                             reloadTrigger.value = !reloadTrigger.value
@@ -817,19 +831,29 @@ class OutstandingActivity : ComponentActivity() {
                                             AlertDialog(
                                                 onDismissRequest = {
                                                     showDialogKonfirmasi.value = false
-                                                    perbaikanKeterangan.value = ""
+                                                    konfirmasiKeterangan.clear()
+                                                    konfirmasiKeterangan.add("") // reset ke 1 input kosong
                                                 },
                                                 title = { Text("Instruksi Perbaikan") },
                                                 text = {
                                                     Column {
-                                                        OutlinedTextField(
-                                                            value = perbaikanKeterangan.value,
-                                                            onValueChange = {
-                                                                perbaikanKeterangan.value = it
-                                                            },
-                                                            placeholder = { Text("Instruksi perbaikan...") },
-                                                            modifier = Modifier.fillMaxWidth()
-                                                        )
+                                                        // Loop input instruksi
+                                                        konfirmasiKeterangan.forEachIndexed { index, value ->
+                                                            OutlinedTextField(
+                                                                value = value,
+                                                                onValueChange = { newValue ->
+                                                                    konfirmasiKeterangan[index] = newValue
+                                                                },
+                                                                placeholder = { Text("Instruksi perbaikan...") },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
+                                                            Spacer(modifier = Modifier.height(8.dp))
+                                                        }
+
+                                                        // Tombol tambah instruksi baru
+                                                        TextButton(onClick = { konfirmasiKeterangan.add("") }) {
+                                                            Text("+ Tambah Instruksi")
+                                                        }
 
                                                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -883,13 +907,14 @@ class OutstandingActivity : ComponentActivity() {
                                                                         .document(docId)
                                                                         .update(
                                                                             mapOf(
-                                                                                nextFieldInstruksi to perbaikanKeterangan.value,
+                                                                                // simpan list, bukan string tunggal
+                                                                                nextFieldInstruksi to konfirmasiKeterangan.filter { it.isNotBlank() },
                                                                                 nextFieldTimestamp to FieldValue.serverTimestamp(),
                                                                                 "status_perbaikan" to "selesai diperiksa",
                                                                                 "status_alat" to statusAlat
                                                                             )
                                                                         ).addOnSuccessListener {
-                                                                            // Cari dokumen di collection alat berdasarkan kode_alat
+                                                                            // update juga collection alat
                                                                             firestore.collection("alat")
                                                                                 .whereEqualTo("kode_alat", kodeAlat)
                                                                                 .limit(1)
@@ -901,7 +926,8 @@ class OutstandingActivity : ComponentActivity() {
                                                                                             .document(alatDoc.id)
                                                                                             .update("status", statusAlat)
                                                                                             .addOnSuccessListener {
-                                                                                                perbaikanKeterangan.value = ""
+                                                                                                konfirmasiKeterangan.clear()
+                                                                                                konfirmasiKeterangan.add("")
                                                                                                 showDialogKonfirmasi.value = false
                                                                                                 isSubmitting.value = false
                                                                                                 reloadTrigger.value = !reloadTrigger.value
@@ -1687,7 +1713,12 @@ class OutstandingActivity : ComponentActivity() {
 
                                         if (showDialog.value) {
                                             AlertDialog(
-                                                onDismissRequest = { showDialog.value = false },
+                                                onDismissRequest = {
+                                                    showDialog.value = false
+                                                    perbaikanKeterangan.clear()
+                                                    perbaikanKeterangan.add("") // reset ke 1 input kosong
+                                                    perbaikanFotoUri.value = null
+                                                },
                                                 confirmButton = {
                                                     TextButton(
                                                         onClick = {
@@ -1711,7 +1742,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                         val nextFieldText = "keterangan_perbaikan_$index"
 
                                                                         val updateData = mutableMapOf<String, Any>(
-                                                                            nextFieldText to perbaikanKeterangan.value,
+                                                                            nextFieldText to perbaikanKeterangan.filter { it.isNotBlank() },
                                                                             "status_perbaikan" to "menunggu konfirmasi operator"
                                                                         )
                                                                         imageUrl?.let {
@@ -1723,7 +1754,8 @@ class OutstandingActivity : ComponentActivity() {
                                                                         firestore.collection("outstanding").document(docId).update(updateData)
                                                                             .addOnSuccessListener {
                                                                                 Log.d("UpdateFirestore", "Dokumen berhasil diupdate.")
-                                                                                perbaikanKeterangan.value = ""
+                                                                                perbaikanKeterangan.clear()
+                                                                                perbaikanKeterangan.add("")
                                                                                 perbaikanFotoUri.value = null
                                                                                 checklistList.clear()
                                                                                 reloadTrigger.value = !reloadTrigger.value
@@ -1736,7 +1768,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                             put("kode_alat", kodeAlat)
                                                                             put("tanggal", checklist["tanggal"])
                                                                             put("item", checklist["item"])
-                                                                            put("keterangan_perbaikan_0", perbaikanKeterangan.value)
+                                                                            put("keterangan_perbaikan_0", perbaikanKeterangan.joinToString(" | "))
                                                                             put("gambar_perbaikan_0", imageUrl ?: "")
                                                                             put("operator_email", doc.getString("operator_email") ?: "")
                                                                         }
@@ -1785,7 +1817,6 @@ class OutstandingActivity : ComponentActivity() {
                                                                 }
                                                             }
                                                         }
-
                                                     ) {
                                                         Text("Submit")
                                                     }
@@ -1793,7 +1824,8 @@ class OutstandingActivity : ComponentActivity() {
                                                 dismissButton = {
                                                     TextButton(onClick = {
                                                         showDialog.value = false
-                                                        perbaikanKeterangan.value = ""
+                                                        perbaikanKeterangan.clear()
+                                                        perbaikanKeterangan.add("")
                                                         perbaikanFotoUri.value = null
                                                     }) {
                                                         Text("Batal")
@@ -1842,12 +1874,21 @@ class OutstandingActivity : ComponentActivity() {
 
                                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                                        androidx.compose.material3.OutlinedTextField(
-                                                            value = perbaikanKeterangan.value,
-                                                            onValueChange = { perbaikanKeterangan.value = it },
-                                                            placeholder = { Text("Masukkan keterangan perbaikan...") },
-                                                            modifier = Modifier.fillMaxWidth()
-                                                        )
+                                                        // Loop semua input keterangan
+                                                        perbaikanKeterangan.forEachIndexed { index, value ->
+                                                            OutlinedTextField(
+                                                                value = value,
+                                                                onValueChange = { newValue -> perbaikanKeterangan[index] = newValue },
+                                                                placeholder = { Text("Masukkan keterangan perbaikan...") },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
+                                                            Spacer(modifier = Modifier.height(8.dp))
+                                                        }
+
+                                                        // Tombol tambah keterangan baru
+                                                        TextButton(onClick = { perbaikanKeterangan.add("") }) {
+                                                            Text("+ Tambah Keterangan")
+                                                        }
                                                     }
                                                 }
                                             )

@@ -228,19 +228,22 @@ fun LoginScreen() {
                         Spacer(modifier = Modifier.width(2.dp))
                         TextButton(
                             onClick = {
-                                context.startActivity(Intent(context, RegisterActivity::class.java))
+                                val url = "https://wa.me/6289697301893"
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = android.net.Uri.parse(url)
+                                }
+                                context.startActivity(intent)
                             },
-                            contentPadding = PaddingValues(0.dp) // tetap penting
+                            contentPadding = PaddingValues(0.dp)
                         ) {
                             Text(
-                                text = "Daftar",
+                                text = "Hubungi Admin",
                                 color = Color(0xFF0066B3),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
                         }
                     }
-
                 }
             }
         }
