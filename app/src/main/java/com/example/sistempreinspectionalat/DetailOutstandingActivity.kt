@@ -1,8 +1,6 @@
 package com.example.sistempreinspectionalat
 
-import android.app.Activity
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -13,9 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -127,7 +123,7 @@ fun DetailOutstandingScreen(
                 ) {
                     // ==== OPERATOR ====
                     item {
-                        // Operator Row
+                        // Header Operator
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(
                                 painter = painterResource(id = R.drawable.operator),
@@ -155,17 +151,16 @@ fun DetailOutstandingScreen(
                         }
                     }
                     item {
+                        // Card Operator
                         Card(
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 val imageUrl = dataDetail.value?.get("gambar") as? String
-
                                 AsyncImage(
                                     model = imageUrl,
                                     contentDescription = "Gambar",
@@ -180,199 +175,242 @@ fun DetailOutstandingScreen(
 
                                 Text("Item: ${dataDetail.value?.get("item") ?: item}", color = darkBlue)
                                 Text("Kondisi: ${dataDetail.value?.get("kondisi") ?: "-"}", color = darkBlue)
-                                Text("Keterangan: ${dataDetail.value?.get("keterangan") ?: "-"}", color = darkBlue)
+
+                                val keteranganRaw = dataDetail.value?.get("keterangan")
+                                val keteranganList = when (keteranganRaw) {
+                                    is List<*> -> keteranganRaw.map { it.toString() }
+                                    is String -> listOf(keteranganRaw)
+                                    else -> emptyList()
+                                }
+                                if (keteranganList.isNotEmpty()) {
+                                    Text("Keterangan:", color = darkBlue, fontWeight = FontWeight.Bold)
+                                    keteranganList.forEachIndexed { i, ket ->
+                                        Text("${i + 1}. $ket", color = darkBlue)
+                                    }
+                                } else {
+                                    Text("Keterangan: -", color = darkBlue)
+                                }
                             }
                         }
                     }
-                    // ==== TANGGAPAN BIMA ====
+
+                    // ==== TIMELINE (BIMA + TEKNIK + SPAREPART READY) ====
                     dataDetail.value?.let { detail ->
-                        // Ambil semua key tanggapan_bima_ yang diakhiri angka
+                        val allEvents = mutableListOf<Map<String, Any>>()
+
+                        // --- BIMA
                         val bimaEntries = detail.filterKeys { key ->
                             key.startsWith("tanggapan_bima_") && key.removePrefix("tanggapan_bima_").all { it.isDigit() }
                         }
+                        bimaEntries.forEach { (key, value) ->
+                            val index = key.removePrefix("tanggapan_bima_")
+                            val tanggapanList = value as? List<String> ?: emptyList()
+                            val hari = detail["estimasi_hari_$index"]?.toString() ?: "0"
+                            val jam = detail["estimasi_jam_$index"]?.toString() ?: "0"
+                            val menit = detail["estimasi_menit_$index"]?.toString() ?: "0"
 
-                        if (bimaEntries.isNotEmpty()) {
-                            val listTanggapan = bimaEntries.map { (key, value) ->
-                                val index = key.removePrefix("tanggapan_bima_")
+                            val spareHari = detail["sparepart_estimasi_hari_$index"]?.toString() ?: "0"
+                            val spareJam = detail["sparepart_estimasi_jam_$index"]?.toString() ?: "0"
+                            val spareMenit = detail["sparepart_estimasi_menit_$index"]?.toString() ?: "0"
+                            val statusSparepart = detail["status_sparepart_$index"]?.toString() ?: "Tidak"
 
-                                val tanggapanList = value as? List<String> ?: emptyList()
+                            val tsBima = detail["tanggapan_bima_timestamp_$index"] as? com.google.firebase.Timestamp
 
-                                val hari = detail["estimasi_hari_$index"]?.toString() ?: "0"
-                                val jam = detail["estimasi_jam_$index"]?.toString() ?: "0"
-                                val menit = detail["estimasi_menit_$index"]?.toString() ?: "0"
-
-                                val spareHari = detail["sparepart_estimasi_hari_$index"]?.toString() ?: "0"
-                                val spareJam = detail["sparepart_estimasi_jam_$index"]?.toString() ?: "0"
-                                val spareMenit = detail["sparepart_estimasi_menit_$index"]?.toString() ?: "0"
-
-                                val ts = detail["tanggapan_bima_timestamp_$index"] as? com.google.firebase.Timestamp
-                                val timestamp = ts?.seconds ?: 0L
-
-                                Log.d("DEBUG_ORDER_BEFORE", "Index=$index | Timestamp=$timestamp | List=$tanggapanList")
-
-                                mapOf(
-                                    "index" to index,
-                                    "tanggapanList" to tanggapanList,
-                                    "estimasi" to "$hari hari $jam jam $menit menit",
-                                    "sparepart" to if (spareHari != null && spareJam != null && spareMenit != null)
-                                        "$spareHari hari $spareJam jam $spareMenit menit"
-                                    else null,
-                                    "timestamp" to timestamp
-                                )
-                            }.sortedBy { it["timestamp"] as Long }
-                                .also { sorted ->
-                                    sorted.forEach {
-                                        Log.d("DEBUG_ORDER_AFTER", "Index=${it["index"]} | Timestamp=${it["timestamp"]} | List=${it["tanggapanList"]}")
-                                    }
-                                }
-
-                            items(listTanggapan.size) { idx ->
-                                val itemBima = listTanggapan[idx]
-                                val tanggapanList = itemBima["tanggapanList"] as List<String>
-                                val index = itemBima["index"] as String
-
-                                // 🔹 Tambahkan ini untuk ambil timestamp
-                                val ts = detail["tanggapan_bima_timestamp_$index"] as? com.google.firebase.Timestamp
-                                val timestampStr = formatTimestamp(ts)
-
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.bima),
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
+                            allEvents.add(
+                                    mapOf<String, Any>(
+                                        "type" to "bima",
+                                        "index" to index,
+                                        "tanggapanList" to tanggapanList,
+                                        "estimasi" to "$hari hari $jam $menit menit",
+                                        "sparepart" to (if (statusSparepart == "Indent") "$spareHari hari $spareJam jam $spareMenit menit" else ""),
+                                        "timestamp" to (tsBima?.seconds ?: 0L),
+                                        "ts" to (tsBima ?: "")
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            text = "PT BIMA",
-                                            color = darkBlue,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier
-                                                .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
-                                                .background(Color.White, RoundedCornerShape(16.dp))
-                                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                                        )
-                                        // 🔹 Tampilkan timestamp di bawah role
-                                        Text(
-                                            text = timestampStr,
-                                            fontSize = 12.sp,
-                                            color = Color.Gray
-                                        )
-                                    }
-                                }
+                                )
 
-                                Card(
-                                    shape = RoundedCornerShape(16.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        tanggapanList.forEach { tanggapan ->
-                                            Text("Tanggapan BIMA: $tanggapan", color = darkBlue)
-                                        }
-                                        Text("Estimasi Waktu Perbaikan: ${itemBima["estimasi"]}", color = darkBlue)
-                                        itemBima["sparepart"]?.let {
-                                            Text("Estimasi Waktu Indent: $it", color = darkBlue)
-                                        }
-                                    }
-                                }
+                            // --- Teknik
+                            val rejectList = (detail["keterangan_reject_$index"] as? List<*>)?.map { it.toString() }
+                                ?: listOfNotNull(detail["keterangan_reject_$index"] as? String)
+                            val instruksiList = (detail["instruksi_teknik_$index"] as? List<*>)?.map { it.toString() }
+                                ?: listOfNotNull(detail["instruksi_teknik_$index"] as? String)
+                            val tsReject = detail["keterangan_reject_timestamp_$index"] as? com.google.firebase.Timestamp
+                            val tsInstruksi = detail["instruksi_teknik_timestamp_$index"] as? com.google.firebase.Timestamp
+                            val tsTeknik = tsReject ?: tsInstruksi
 
-                                // ==== TEKNIK ====
-                                val rejectRaw = detail["keterangan_reject_$index"]
-                                val rejectList = when (rejectRaw) {
-                                    is List<*> -> rejectRaw.map { it.toString() } // Firestore Array
-                                    is String -> listOf(rejectRaw) // kalau ternyata single string
-                                    else -> emptyList()
-                                }
+                            if (rejectList.isNotEmpty() || instruksiList.isNotEmpty()) {
+                                allEvents.add(
+                                    mapOf<String, Any>(
+                                        "type" to "teknik",
+                                        "index" to index,
+                                        "rejectList" to rejectList,
+                                        "instruksiList" to instruksiList,
+                                        "timestamp" to (tsTeknik?.seconds ?: 0L),
+                                        "ts" to (tsTeknik ?: "")
+                                    )
+                                )
+                            }
+                        }
 
-                                val instruksiRaw = detail["instruksi_teknik_$index"]
-                                val instruksiList = when (instruksiRaw) {
-                                    is List<*> -> instruksiRaw.map { it.toString() }
-                                    is String -> listOf(instruksiRaw)
-                                    else -> emptyList()
-                                }
+                        // --- Sparepart Ready
+                        val sparepartReadyTs = detail["sparepart_ready_timestamp"] as? com.google.firebase.Timestamp
+                        if (sparepartReadyTs != null) {
+                            allEvents.add(
+                                mapOf(
+                                    "type" to "sparepart_ready",
+                                    "timestamp" to (sparepartReadyTs.seconds),
+                                    "ts" to sparepartReadyTs
+                                )
+                            )
+                        }
 
-                                Log.d("DEBUG_TEKNIK", "Index = $index")
-                                Log.d("DEBUG_TEKNIK", "keterangan_reject_$index -> $rejectList")
-                                Log.d("DEBUG_TEKNIK", "instruksi_teknik_$index -> $instruksiList")
+                        // Urutkan ASC
+                        val sortedEvents = allEvents.sortedBy { it["timestamp"] as Long }
 
-                                if (rejectList.isNotEmpty() || instruksiList.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-
-                                    // 🔹 Ambil timestamp dari reject atau instruksi
-                                    val tsReject = detail["keterangan_reject_timestamp_$index"] as? com.google.firebase.Timestamp
-                                    val tsInstruksi = detail["instruksi_teknik_timestamp_$index"] as? com.google.firebase.Timestamp
-
-                                    // pilih timestamp mana yang ada
-                                    val timestampStr = when {
-                                        tsReject != null -> formatTimestamp(tsReject)
-                                        tsInstruksi != null -> formatTimestamp(tsInstruksi)
-                                        else -> "-"
-                                    }
-
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.teknik),
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(CircleShape)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Column {
-                                            Text(
-                                                text = "Teknik",
-                                                color = darkBlue,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier
-                                                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
-                                                    .background(Color.White, RoundedCornerShape(16.dp))
-                                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                                            )
-                                            // 🔹 Tampilkan timestamp
-                                            Text(
-                                                text = timestampStr,
-                                                fontSize = 12.sp,
-                                                color = Color.Gray
-                                            )
-                                        }
-                                    }
-
-                                    Card(
-                                        shape = RoundedCornerShape(16.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
-                                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            if (rejectList.isNotEmpty()) {
-                                                Text("Keterangan Reject:", color = darkBlue, fontWeight = FontWeight.Bold)
-                                                rejectList.forEachIndexed { i, ket ->
-                                                    Text("${i + 1}. $ket", color = darkBlue)
-                                                }
-                                            }
-                                            if (instruksiList.isNotEmpty()) {
-                                                Text("Instruksi Perbaikan:", color = darkBlue, fontWeight = FontWeight.Bold)
-                                                instruksiList.forEachIndexed { i, instruksi ->
-                                                    Text("${i + 1}. $instruksi", color = darkBlue)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                        items(sortedEvents.size) { idx ->
+                            val event = sortedEvents[idx]
+                            when (event["type"]) {
+                                "bima" -> TimelineBimaCard(event, darkBlue)
+                                "teknik" -> TimelineTeknikCard(event, darkBlue)
+                                "sparepart_ready" -> TimelineSparepartReadyCard(event, darkBlue)
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun TimelineBimaCard(event: Map<String, Any>, darkBlue: Color) {
+    val tanggapanList = event["tanggapanList"] as List<String>
+    val estimasi = event["estimasi"] as String
+    val sparepart = event["sparepart"] as String?
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.bima),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "PT BIMA",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            if (tanggapanList.isNotEmpty()) {
+                Text("Tanggapan BIMA:", color = darkBlue, fontWeight = FontWeight.Bold)
+                tanggapanList.forEachIndexed { i, t -> Text("${i + 1}. $t", color = darkBlue) }
+            }
+            Text("Estimasi Waktu Perbaikan: $estimasi", color = darkBlue)
+            sparepart?.let { Text("Estimasi Waktu Indent: $it", color = darkBlue) }
+        }
+    }
+}
+
+@Composable
+fun TimelineTeknikCard(event: Map<String, Any>, darkBlue: Color) {
+    val rejectList = event["rejectList"] as List<String>
+    val instruksiList = event["instruksiList"] as List<String>
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.teknik),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "Teknik",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            if (rejectList.isNotEmpty()) {
+                Text("Keterangan Reject:", color = darkBlue, fontWeight = FontWeight.Bold)
+                rejectList.forEachIndexed { i, ket -> Text("${i + 1}. $ket", color = darkBlue) }
+            }
+            if (instruksiList.isNotEmpty()) {
+                Text("Instruksi Perbaikan:", color = darkBlue, fontWeight = FontWeight.Bold)
+                instruksiList.forEachIndexed { i, ins -> Text("${i + 1}. $ins", color = darkBlue) }
+            }
+        }
+    }
+}
+
+@Composable
+fun TimelineSparepartReadyCard(event: Map<String, Any>, darkBlue: Color) {
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.bima),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "PT BIMA",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Sparepart sudah tersedia, alat dalam proses perbaikan.", color = darkBlue)
         }
     }
 }

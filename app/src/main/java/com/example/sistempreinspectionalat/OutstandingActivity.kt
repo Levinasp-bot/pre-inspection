@@ -1502,7 +1502,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                                 val ketField =
                                                                                     "keterangan_perbaikan_$index"
                                                                                 val timeField =
-                                                                                    "revisi_operator_${index}_timestamp"
+                                                                                    "revisi_teknik_${index}_timestamp"
 
                                                                                 val updateData =
                                                                                     mapOf(
