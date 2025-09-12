@@ -233,19 +233,32 @@ fun DetailOutstandingScreen(
                                 ?: listOfNotNull(detail["keterangan_reject_$index"] as? String)
                             val instruksiList = (detail["instruksi_teknik_$index"] as? List<*>)?.map { it.toString() }
                                 ?: listOfNotNull(detail["instruksi_teknik_$index"] as? String)
+
                             val tsReject = detail["keterangan_reject_timestamp_$index"] as? com.google.firebase.Timestamp
                             val tsInstruksi = detail["instruksi_teknik_timestamp_$index"] as? com.google.firebase.Timestamp
-                            val tsTeknik = tsReject ?: tsInstruksi
 
-                            if (rejectList.isNotEmpty() || instruksiList.isNotEmpty()) {
+                            // Reject jadi event sendiri
+                            if (rejectList.isNotEmpty()) {
                                 allEvents.add(
-                                    mapOf<String, Any>(
-                                        "type" to "teknik",
+                                    mapOf(
+                                        "type" to "reject",
                                         "index" to index,
                                         "rejectList" to rejectList,
+                                        "timestamp" to (tsReject?.seconds ?: 0L),
+                                        "ts" to (tsReject ?: "")
+                                    )
+                                )
+                            }
+
+                            // Instruksi jadi event sendiri
+                            if (instruksiList.isNotEmpty()) {
+                                allEvents.add(
+                                    mapOf(
+                                        "type" to "instruksi",
+                                        "index" to index,
                                         "instruksiList" to instruksiList,
-                                        "timestamp" to (tsTeknik?.seconds ?: 0L),
-                                        "ts" to (tsTeknik ?: "")
+                                        "timestamp" to (tsInstruksi?.seconds ?: 0L),
+                                        "ts" to (tsInstruksi ?: "")
                                     )
                                 )
                             }
@@ -263,15 +276,133 @@ fun DetailOutstandingScreen(
                             )
                         }
 
+                        // --- Laporan Perbaikan PT BIMA
+                        detail.keys.filter { it.startsWith("keterangan_perbaikan_") }
+                            .mapNotNull { key ->
+                                val index = key.removePrefix("keterangan_perbaikan_").toIntOrNull() ?: return@mapNotNull null
+                                if (index % 2 == 0) index else null // hanya index genap
+                            }
+                            .forEach { index ->
+                                val perbaikanList = (detail["keterangan_perbaikan_$index"] as? List<*>)?.map { it.toString() }
+                                    ?: listOfNotNull(detail["keterangan_perbaikan_$index"] as? String)
+
+                                val tsPerbaikan = detail["keterangan_perbaikan_${index}_timestamp"] as? com.google.firebase.Timestamp
+
+                                if (perbaikanList.isNotEmpty()) {
+                                    allEvents.add(
+                                        mapOf(
+                                            "type" to "perbaikan",
+                                            "index" to index,
+                                            "perbaikanList" to perbaikanList,
+                                            "timestamp" to (tsPerbaikan?.seconds ?: 0L),
+                                            "ts" to (tsPerbaikan ?: "")
+                                        )
+                                    )
+                                }
+                            }
+
+                        // --- Revisi Teknik (index ganjil)
+                        detail.keys.filter { it.startsWith("keterangan_perbaikan_") }
+                            .mapNotNull { key ->
+                                val idx = key.removePrefix("keterangan_perbaikan_").toIntOrNull()
+                                if (idx != null && idx % 2 == 1) idx else null
+                            }
+                            .forEach { idx ->
+                                val revisiList = (detail["keterangan_perbaikan_$idx"] as? List<*>)?.map { it.toString() }
+                                    ?: listOfNotNull(detail["keterangan_perbaikan_$idx"] as? String)
+
+                                val tsRevisi = detail["revisi_teknik_${idx}_timestamp"] as? com.google.firebase.Timestamp
+
+                                if (revisiList.isNotEmpty()) {
+                                    allEvents.add(
+                                        mapOf(
+                                            "type" to "revisi",
+                                            "index" to idx,
+                                            "revisiList" to revisiList,
+                                            "timestamp" to (tsRevisi?.seconds ?: 0L),
+                                            "ts" to (tsRevisi ?: "")
+                                        )
+                                    )
+                                }
+                            }
+
+                        // --- Konfirmasi Teknik
+                        val konfirmasiTs = detail["konfirmasi_teknik_timestamp"] as? com.google.firebase.Timestamp
+                        if (konfirmasiTs != null) {
+                            allEvents.add(
+                                mapOf(
+                                    "type" to "konfirmasi",
+                                    "timestamp" to konfirmasiTs.seconds,
+                                    "ts" to konfirmasiTs
+                                )
+                            )
+                        }
+
+                        // --- Operator: Masih terdapat kerusakan
+                        detail.keys.filter { it.startsWith("keterangan_") }
+                            .mapNotNull { key ->
+                                val index = key.removePrefix("keterangan_").toIntOrNull()
+                            }
+                            .forEach { idx ->
+                                val keteranganList = (detail["keterangan_$idx"] as? List<*>)?.map { it.toString() }
+                                    ?: listOfNotNull(detail["keterangan_$idx"] as? String)
+                                val gambarUrl = detail["gambar_$idx"] as? String
+                                val tsOperator = detail["keterangan_${idx}_timestamp"] as? com.google.firebase.Timestamp
+
+                                if (keteranganList.isNotEmpty() || !gambarUrl.isNullOrEmpty()) {
+                                    allEvents.add(
+                                        mapOf(
+                                            "type" to "operator",
+                                            "index" to idx,
+                                            "keteranganList" to keteranganList,
+                                            "gambarUrl" to (gambarUrl ?: ""),
+                                            "timestamp" to (tsOperator?.seconds ?: 0L),
+                                            "ts" to (tsOperator ?: "")
+                                        )
+                                    )
+                                }
+                            }
+
+                        // --- Konfirmasi Operator
+                        val konfirmasiOperatorTs = detail["konfirmasi_operator_timestamp"] as? com.google.firebase.Timestamp
+                        if (konfirmasiOperatorTs != null) {
+                            allEvents.add(
+                                mapOf(
+                                    "type" to "konfirmasi_operator",
+                                    "timestamp" to konfirmasiOperatorTs.seconds,
+                                    "ts" to konfirmasiOperatorTs
+                                )
+                            )
+                        }
+
+                        // --- Verifikasi Manager
+                        val verifikasiManagerTs = detail["verifikasi_manager_timestamp"] as? com.google.firebase.Timestamp
+                        if (verifikasiManagerTs != null) {
+                            allEvents.add(
+                                mapOf(
+                                    "type" to "verifikasi_manager",
+                                    "timestamp" to verifikasiManagerTs.seconds,
+                                    "ts" to verifikasiManagerTs
+                                )
+                            )
+                        }
+
                         // Urutkan ASC
                         val sortedEvents = allEvents.sortedBy { it["timestamp"] as Long }
 
                         items(sortedEvents.size) { idx ->
                             val event = sortedEvents[idx]
                             when (event["type"]) {
+                                "operator" -> TimelineOperatorCard(event, darkBlue)
+                                "konfirmasi_operator" -> TimelineKonfirmasiOperatorCard(event, darkBlue)
                                 "bima" -> TimelineBimaCard(event, darkBlue)
-                                "teknik" -> TimelineTeknikCard(event, darkBlue)
+                                "reject" -> TimelineRejectCard(event, darkBlue)
+                                "instruksi" -> TimelineInstruksiCard(event, darkBlue)
+                                "perbaikan" -> TimelinePerbaikanCard(event, darkBlue)
+                                "revisi" -> TimelineRevisiCard(event, darkBlue)
+                                "konfirmasi" -> TimelineKonfirmasiCard(event, darkBlue)
                                 "sparepart_ready" -> TimelineSparepartReadyCard(event, darkBlue)
+                                "verifikasi_manager" -> TimelineVerifikasiManagerCard(event, darkBlue) // 🔹 ini tambahan
                             }
                         }
                     }
@@ -329,9 +460,8 @@ fun TimelineBimaCard(event: Map<String, Any>, darkBlue: Color) {
 }
 
 @Composable
-fun TimelineTeknikCard(event: Map<String, Any>, darkBlue: Color) {
+fun TimelineRejectCard(event: Map<String, Any>, darkBlue: Color) {
     val rejectList = event["rejectList"] as List<String>
-    val instruksiList = event["instruksiList"] as List<String>
     val ts = event["ts"] as? com.google.firebase.Timestamp
     val timestampStr = formatTimestamp(ts)
 
@@ -344,7 +474,7 @@ fun TimelineTeknikCard(event: Map<String, Any>, darkBlue: Color) {
         Spacer(modifier = Modifier.width(8.dp))
         Column {
             Text(
-                text = "Teknik",
+                text = "Teknik - Reject",
                 color = darkBlue,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
@@ -364,14 +494,49 @@ fun TimelineTeknikCard(event: Map<String, Any>, darkBlue: Color) {
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            if (rejectList.isNotEmpty()) {
-                Text("Keterangan Reject:", color = darkBlue, fontWeight = FontWeight.Bold)
-                rejectList.forEachIndexed { i, ket -> Text("${i + 1}. $ket", color = darkBlue) }
-            }
-            if (instruksiList.isNotEmpty()) {
-                Text("Instruksi Perbaikan:", color = darkBlue, fontWeight = FontWeight.Bold)
-                instruksiList.forEachIndexed { i, ins -> Text("${i + 1}. $ins", color = darkBlue) }
-            }
+            Text("Keterangan Reject:", color = darkBlue, fontWeight = FontWeight.Bold)
+            rejectList.forEachIndexed { i, ket -> Text("${i + 1}. $ket", color = darkBlue) }
+        }
+    }
+}
+
+@Composable
+fun TimelineInstruksiCard(event: Map<String, Any>, darkBlue: Color) {
+    val instruksiList = event["instruksiList"] as List<String>
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.teknik),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "Teknik - Instruksi",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Instruksi Perbaikan:", color = darkBlue, fontWeight = FontWeight.Bold)
+            instruksiList.forEachIndexed { i, ins -> Text("${i + 1}. $ins", color = darkBlue) }
         }
     }
 }
@@ -411,6 +576,272 @@ fun TimelineSparepartReadyCard(event: Map<String, Any>, darkBlue: Color) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text("Sparepart sudah tersedia, alat dalam proses perbaikan.", color = darkBlue)
+        }
+    }
+}
+
+@Composable
+fun TimelinePerbaikanCard(event: Map<String, Any>, darkBlue: Color) {
+    val perbaikanList = event["perbaikanList"] as List<String>
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.bima),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "PT BIMA - Laporan Perbaikan",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Laporan Perbaikan:", color = darkBlue, fontWeight = FontWeight.Bold)
+            perbaikanList.forEachIndexed { i, ket -> Text("${i + 1}. $ket", color = darkBlue) }
+        }
+    }
+}
+
+@Composable
+fun TimelineRevisiCard(event: Map<String, Any>, darkBlue: Color) {
+    val revisiList = event["revisiList"] as List<String>
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.teknik),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "Teknik - Revisi",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Revisi:", color = darkBlue, fontWeight = FontWeight.Bold)
+            revisiList.forEachIndexed { i, ket ->
+                Text("${i + 1}. $ket", color = darkBlue)
+            }
+        }
+    }
+}
+
+@Composable
+fun TimelineKonfirmasiCard(event: Map<String, Any>, darkBlue: Color) {
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.teknik),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "Teknik - Konfirmasi",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Perbaikan sudah dikonfirmasi.", color = darkBlue)
+        }
+    }
+}
+
+@Composable
+fun TimelineOperatorCard(event: Map<String, Any>, darkBlue: Color) {
+    val keteranganList = event["keteranganList"] as List<String>
+    val gambarUrl = event["gambarUrl"] as String
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.operator),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "Operator",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Masih terdapat kerusakan", color = darkBlue, fontWeight = FontWeight.Bold)
+
+            if (keteranganList.isNotEmpty()) {
+                Text("Keterangan:", color = darkBlue, fontWeight = FontWeight.Bold)
+                keteranganList.forEachIndexed { i, ket ->
+                    Text("${i + 1}. $ket", color = darkBlue)
+                }
+            }
+
+            if (gambarUrl.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                AsyncImage(
+                    model = gambarUrl,
+                    contentDescription = "Gambar Kerusakan",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TimelineKonfirmasiOperatorCard(event: Map<String, Any>, darkBlue: Color) {
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.operator),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "Operator - Konfirmasi",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Perbaikan sudah dikonfirmasi oleh Operator.", color = darkBlue)
+        }
+    }
+}
+
+@Composable
+fun TimelineVerifikasiManagerCard(event: Map<String, Any>, darkBlue: Color) {
+    val ts = event["ts"] as? com.google.firebase.Timestamp
+    val timestampStr = formatTimestamp(ts)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(id = R.drawable.manager), // 🔹 pastikan ada icon manager
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = "Manager",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                "Perbaikan telah diverifikasi oleh Manager, laporan ditutup.",
+                color = darkBlue,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

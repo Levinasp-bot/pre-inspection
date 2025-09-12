@@ -200,7 +200,7 @@ class OutstandingActivity : ComponentActivity() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF003366)) // darkBlue
+                .background(Color(0xFF003366))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
 
@@ -616,7 +616,8 @@ class OutstandingActivity : ComponentActivity() {
                                                                 }
                                                         },
                                                         colors = ButtonDefaults.buttonColors(
-                                                            containerColor = Color(0xFF00695C)
+                                                            containerColor = Color(0xFF003366), // ✅ Dark Blue
+                                                            contentColor = Color.White
                                                         )
                                                     ) {
                                                         Text("Kirim", color = Color.White)
@@ -629,7 +630,7 @@ class OutstandingActivity : ComponentActivity() {
                                                         Text("Batal")
                                                     }
                                                 },
-                                                shape = RoundedCornerShape(16.dp)
+                                                shape = RoundedCornerShape(0.dp)
                                             )
                                         }
                                     }
@@ -897,6 +898,21 @@ class OutstandingActivity : ComponentActivity() {
                                                                     val nextFieldInstruksi = "instruksi_teknik_$nextIndex"
                                                                     val nextFieldTimestamp = "instruksi_teknik_timestamp_$nextIndex"
 
+                                                                    // 🔎 cari status_sparepart index terakhir
+                                                                    val maxSpareIndex = data.keys
+                                                                        .filter { it.startsWith("status_sparepart_") }
+                                                                        .mapNotNull { it.removePrefix("status_sparepart_").toIntOrNull() }
+                                                                        .maxOrNull() ?: 0
+
+                                                                    val lastSpareStatus = data["status_sparepart_$maxSpareIndex"] as? String ?: "Tidak"
+
+                                                                    // 🛠 tentukan status_perbaikan sesuai lastSpareStatus
+                                                                    val statusPerbaikan = if (lastSpareStatus == "Indent") {
+                                                                        "menunggu pengadaan sparepart"
+                                                                    } else {
+                                                                        "proses perbaikan alat oleh PT BIMA"
+                                                                    }
+
                                                                     val statusAlat = if (selectedStatusAlat.value == "Break Down") {
                                                                         "BREAK DOWN"
                                                                     } else {
@@ -907,14 +923,14 @@ class OutstandingActivity : ComponentActivity() {
                                                                         .document(docId)
                                                                         .update(
                                                                             mapOf(
-                                                                                // simpan list, bukan string tunggal
                                                                                 nextFieldInstruksi to konfirmasiKeterangan.filter { it.isNotBlank() },
                                                                                 nextFieldTimestamp to FieldValue.serverTimestamp(),
-                                                                                "status_perbaikan" to "selesai diperiksa",
+                                                                                "status_perbaikan" to statusPerbaikan,
                                                                                 "status_alat" to statusAlat
                                                                             )
-                                                                        ).addOnSuccessListener {
-                                                                            // update juga collection alat
+                                                                        )
+                                                                        .addOnSuccessListener {
+                                                                            // update collection alat juga
                                                                             firestore.collection("alat")
                                                                                 .whereEqualTo("kode_alat", kodeAlat)
                                                                                 .limit(1)
@@ -1032,6 +1048,7 @@ class OutstandingActivity : ComponentActivity() {
                                                 onDismissRequest = { showDialog.value = false },
                                                 confirmButton = {
                                                     TextButton(onClick = {
+                                                        showDialog.value = false
                                                         isSubmitting.value = true
                                                         val firestore =
                                                             FirebaseFirestore.getInstance()
@@ -1062,7 +1079,6 @@ class OutstandingActivity : ComponentActivity() {
                                                                             )
                                                                         )
                                                                         .addOnSuccessListener {
-                                                                            showDialog.value = false
                                                                             isSubmitting.value =
                                                                                 false
                                                                             checklistList.clear()
@@ -1167,6 +1183,7 @@ class OutstandingActivity : ComponentActivity() {
                                                 confirmButton = {
                                                     Button(
                                                         onClick = {
+                                                            showPerbaikanDialog.value = false
                                                             isSubmitting.value = true
                                                             val uri = perbaikanFotoUri.value
                                                             if (uri == null) {
@@ -1175,6 +1192,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                     "Silakan pilih foto terlebih dahulu",
                                                                     Toast.LENGTH_SHORT
                                                                 ).show()
+                                                                isSubmitting.value = false
                                                                 return@Button
                                                             }
 
@@ -1252,8 +1270,6 @@ class OutstandingActivity : ComponentActivity() {
                                                                                         updateData
                                                                                     )
                                                                                     .addOnSuccessListener {
-                                                                                        showPerbaikanDialog.value =
-                                                                                            false
                                                                                         keteranganPerbaikan.value =
                                                                                             ""
                                                                                         perbaikanFotoUri.value =
@@ -1405,6 +1421,12 @@ class OutstandingActivity : ComponentActivity() {
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
+                                        val launcher = rememberLauncherForActivityResult(
+                                            ActivityResultContracts.GetContent()
+                                        ) { uri ->
+                                            perbaikanFotoUri.value = uri
+                                        }
+
                                         // Tombol Revisi
                                         Button(
                                             onClick = { showPerbaikanDialog.value = true },
@@ -1418,12 +1440,6 @@ class OutstandingActivity : ComponentActivity() {
                                             Text("Revisi")
                                         }
 
-                                        val launcher = rememberLauncherForActivityResult(
-                                            ActivityResultContracts.GetContent()
-                                        ) { uri ->
-                                            perbaikanFotoUri.value = uri
-                                        }
-
                                         if (showPerbaikanDialog.value) {
                                             AlertDialog(
                                                 onDismissRequest = {
@@ -1434,6 +1450,7 @@ class OutstandingActivity : ComponentActivity() {
                                                 confirmButton = {
                                                     Button(
                                                         onClick = {
+                                                            showPerbaikanDialog.value = false
                                                             isSubmitting.value = true
                                                             val uri = perbaikanFotoUri.value
                                                             if (uri == null) {
@@ -1442,6 +1459,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                     "Silakan pilih foto terlebih dahulu",
                                                                     Toast.LENGTH_SHORT
                                                                 ).show()
+                                                                isSubmitting.value = false
                                                                 return@Button
                                                             }
 
@@ -1519,8 +1537,6 @@ class OutstandingActivity : ComponentActivity() {
                                                                                         updateData
                                                                                     )
                                                                                     .addOnSuccessListener {
-                                                                                        showPerbaikanDialog.value =
-                                                                                            false
                                                                                         keteranganPerbaikan.value =
                                                                                             ""
                                                                                         perbaikanFotoUri.value =
@@ -1743,7 +1759,7 @@ class OutstandingActivity : ComponentActivity() {
 
                                                                         val updateData = mutableMapOf<String, Any>(
                                                                             nextFieldText to perbaikanKeterangan.filter { it.isNotBlank() },
-                                                                            "status_perbaikan" to "menunggu konfirmasi operator"
+                                                                            "status_perbaikan" to "menunggu konfirmasi teknik"
                                                                         )
                                                                         imageUrl?.let {
                                                                             updateData[nextFieldImage] = it
@@ -1922,11 +1938,11 @@ class OutstandingActivity : ComponentActivity() {
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("file", "image.jpg", RequestBody.create("image/*".toMediaTypeOrNull(), imageData))
-            .addFormDataPart("upload_preset", "fotoalat") // Pastikan ini sesuai dengan Cloudinary Anda
+            .addFormDataPart("upload_preset", "fotoalat")
             .build()
 
         val request = Request.Builder()
-            .url(cloudinaryUrl) // Pastikan cloudinaryUrl benar
+            .url(cloudinaryUrl)
             .post(requestBody)
             .build()
 

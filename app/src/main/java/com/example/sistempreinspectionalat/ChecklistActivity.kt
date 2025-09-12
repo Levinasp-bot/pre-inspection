@@ -332,6 +332,7 @@ class ChecklistActivity : ComponentActivity() {
                                                                                 if (!imageUrl.isNullOrEmpty()) {
                                                                                     updateData["gambar_$nextIndex"] = imageUrl
                                                                                     updateData["keterangan_$nextIndex"] = keterangan
+                                                                                    updateData["keterangan_operator_timestamp_$nextIndex"] = FieldValue.serverTimestamp()
                                                                                     doc.reference.update(updateData)
                                                                                     Log.d("Checklist", "Update outstanding revisi → item=$item")
                                                                                 }
@@ -398,11 +399,16 @@ class ChecklistActivity : ComponentActivity() {
                                                         .get()
                                                         .addOnSuccessListener { querySnapshot ->
                                                             for (doc in querySnapshot) {
-                                                                doc.reference.update("status_perbaikan", "menunggu verifikasi manager")
+                                                                val updateData = mapOf(
+                                                                    "status_perbaikan" to "menunggu verifikasi manager",
+                                                                    "konfirmasi_operator_timestamp" to FieldValue.serverTimestamp()
+                                                                )
+                                                                doc.reference.update(updateData)
                                                                 Log.d("Checklist", "Update outstanding existing → menunggu verifikasi manager")
                                                             }
                                                         }
                                                 }
+
 
                                                 // 🔹 STEP 4: update status alat
 //                                                firestore.collection("alat")
