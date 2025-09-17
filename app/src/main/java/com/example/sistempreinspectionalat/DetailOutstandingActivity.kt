@@ -205,28 +205,33 @@ fun DetailOutstandingScreen(
                         bimaEntries.forEach { (key, value) ->
                             val index = key.removePrefix("tanggapan_bima_")
                             val tanggapanList = value as? List<String> ?: emptyList()
-                            val hari = detail["estimasi_hari_$index"]?.toString() ?: "0"
-                            val jam = detail["estimasi_jam_$index"]?.toString() ?: "0"
-                            val menit = detail["estimasi_menit_$index"]?.toString() ?: "0"
 
-                            val spareHari = detail["sparepart_estimasi_hari_$index"]?.toString() ?: "0"
-                            val spareJam = detail["sparepart_estimasi_jam_$index"]?.toString() ?: "0"
-                            val spareMenit = detail["sparepart_estimasi_menit_$index"]?.toString() ?: "0"
+                            val hari = detail["estimasi_hari_$index"]?.toString()
+                            val jam = detail["estimasi_jam_$index"]?.toString()
+                            val menit = detail["estimasi_menit_$index"]?.toString()
+
                             val statusSparepart = detail["status_sparepart_$index"]?.toString() ?: "Tidak"
+
+                            val spareHari = detail["sparepart_estimasi_hari_$index"]?.toString()
+                            val spareJam = detail["sparepart_estimasi_jam_$index"]?.toString()
+                            val spareMenit = detail["sparepart_estimasi_menit_$index"]?.toString()
+
+                            val estimasi = formatEstimasi(hari, jam, menit)
+                            val spareEstimasi = if (statusSparepart == "Indent") formatEstimasi(spareHari, spareJam, spareMenit) else ""
 
                             val tsBima = detail["tanggapan_bima_timestamp_$index"] as? com.google.firebase.Timestamp
 
                             allEvents.add(
-                                    mapOf<String, Any>(
-                                        "type" to "bima",
-                                        "index" to index,
-                                        "tanggapanList" to tanggapanList,
-                                        "estimasi" to "$hari hari $jam $menit menit",
-                                        "sparepart" to (if (statusSparepart == "Indent") "$spareHari hari $spareJam jam $spareMenit menit" else ""),
-                                        "timestamp" to (tsBima?.seconds ?: 0L),
-                                        "ts" to (tsBima ?: "")
-                                    )
+                                mapOf<String, Any>(
+                                    "type" to "bima",
+                                    "index" to index,
+                                    "tanggapanList" to tanggapanList,
+                                    "estimasi" to estimasi,
+                                    "sparepart" to spareEstimasi,
+                                    "timestamp" to (tsBima?.seconds ?: 0L),
+                                    "ts" to (tsBima ?: "")
                                 )
+                            )
 
                             // --- Teknik
                             val rejectList = (detail["keterangan_reject_$index"] as? List<*>)?.map { it.toString() }
@@ -287,13 +292,15 @@ fun DetailOutstandingScreen(
                                     ?: listOfNotNull(detail["keterangan_perbaikan_$index"] as? String)
 
                                 val tsPerbaikan = detail["keterangan_perbaikan_${index}_timestamp"] as? com.google.firebase.Timestamp
+                                val gambarPerbaikan = detail["gambar_perbaikan_$index"] as? String
 
-                                if (perbaikanList.isNotEmpty()) {
+                                if (perbaikanList.isNotEmpty() || !gambarPerbaikan.isNullOrEmpty()) {
                                     allEvents.add(
                                         mapOf(
                                             "type" to "perbaikan",
                                             "index" to index,
                                             "perbaikanList" to perbaikanList,
+                                            "gambarPerbaikan" to (gambarPerbaikan ?: ""),
                                             "timestamp" to (tsPerbaikan?.seconds ?: 0L),
                                             "ts" to (tsPerbaikan ?: "")
                                         )
@@ -311,14 +318,16 @@ fun DetailOutstandingScreen(
                                 val revisiList = (detail["keterangan_perbaikan_$idx"] as? List<*>)?.map { it.toString() }
                                     ?: listOfNotNull(detail["keterangan_perbaikan_$idx"] as? String)
 
-                                val tsRevisi = detail["revisi_teknik_${idx}_timestamp"] as? com.google.firebase.Timestamp
+                                val tsRevisi = detail["keterangan_perbaikan_${idx}_timestamp"] as? com.google.firebase.Timestamp
+                                val gambarRevisi = detail["gambar_perbaikan_$idx"] as? String  // ambil gambar sesuai index
 
-                                if (revisiList.isNotEmpty()) {
+                                if (revisiList.isNotEmpty() || !gambarRevisi.isNullOrEmpty()) {
                                     allEvents.add(
                                         mapOf(
                                             "type" to "revisi",
                                             "index" to idx,
                                             "revisiList" to revisiList,
+                                            "gambarPerbaikan" to (gambarRevisi ?: ""),  // masukkan ke event
                                             "timestamp" to (tsRevisi?.seconds ?: 0L),
                                             "ts" to (tsRevisi ?: "")
                                         )
@@ -412,6 +421,14 @@ fun DetailOutstandingScreen(
     }
 }
 
+fun formatEstimasi(hari: String?, jam: String?, menit: String?): String {
+    val parts = mutableListOf<String>()
+    if (!hari.isNullOrBlank() && hari != "0") parts.add("$hari hari")
+    if (!jam.isNullOrBlank() && jam != "0") parts.add("$jam jam")
+    if (!menit.isNullOrBlank() && menit != "0") parts.add("$menit menit")
+    return if (parts.isEmpty()) "-" else parts.joinToString(" ")
+}
+
 @Composable
 fun TimelineBimaCard(event: Map<String, Any>, darkBlue: Color) {
     val tanggapanList = event["tanggapanList"] as List<String>
@@ -454,7 +471,9 @@ fun TimelineBimaCard(event: Map<String, Any>, darkBlue: Color) {
                 tanggapanList.forEachIndexed { i, t -> Text("${i + 1}. $t", color = darkBlue) }
             }
             Text("Estimasi Waktu Perbaikan: $estimasi", color = darkBlue)
-            sparepart?.let { Text("Estimasi Waktu Indent: $it", color = darkBlue) }
+            if (!sparepart.isNullOrBlank() && sparepart != "Tidak") {
+                Text("Estimasi Waktu Indent: $sparepart", color = darkBlue)
+            }
         }
     }
 }
@@ -583,6 +602,7 @@ fun TimelineSparepartReadyCard(event: Map<String, Any>, darkBlue: Color) {
 @Composable
 fun TimelinePerbaikanCard(event: Map<String, Any>, darkBlue: Color) {
     val perbaikanList = event["perbaikanList"] as List<String>
+    val gambarPerbaikan = event["gambarPerbaikan"] as? String
     val ts = event["ts"] as? com.google.firebase.Timestamp
     val timestampStr = formatTimestamp(ts)
 
@@ -615,8 +635,29 @@ fun TimelinePerbaikanCard(event: Map<String, Any>, darkBlue: Color) {
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            // 🔹 Tampilkan gambar perbaikan paling atas
+            if (!gambarPerbaikan.isNullOrEmpty()) {
+                AsyncImage(
+                    model = gambarPerbaikan,
+                    contentDescription = "Gambar Perbaikan",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // 🔹 Tampilkan keterangan perbaikan
             Text("Laporan Perbaikan:", color = darkBlue, fontWeight = FontWeight.Bold)
-            perbaikanList.forEachIndexed { i, ket -> Text("${i + 1}. $ket", color = darkBlue) }
+            if (perbaikanList.isNotEmpty()) {
+                perbaikanList.forEachIndexed { i, ket ->
+                    Text("${i + 1}. $ket", color = darkBlue)
+                }
+            } else {
+                Text("Tidak ada keterangan perbaikan", color = darkBlue)
+            }
         }
     }
 }
@@ -626,39 +667,58 @@ fun TimelineRevisiCard(event: Map<String, Any>, darkBlue: Color) {
     val revisiList = event["revisiList"] as List<String>
     val ts = event["ts"] as? com.google.firebase.Timestamp
     val timestampStr = formatTimestamp(ts)
+    val gambar = event["gambarPerbaikan"] as? String
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Image(
-            painter = painterResource(id = R.drawable.teknik),
-            contentDescription = null,
-            modifier = Modifier.size(40.dp).clip(CircleShape)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            Text(
-                text = "Teknik - Revisi",
-                color = darkBlue,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(id = R.drawable.teknik),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp).clip(CircleShape)
             )
-            Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "Teknik - Revisi",
+                    color = darkBlue,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .border(1.dp, darkBlue, RoundedCornerShape(16.dp))
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+                Text(timestampStr, fontSize = 12.sp, color = Color.Gray)
+            }
         }
-    }
 
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("Revisi:", color = darkBlue, fontWeight = FontWeight.Bold)
-            revisiList.forEachIndexed { i, ket ->
-                Text("${i + 1}. $ket", color = darkBlue)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(2.dp, darkBlue, RoundedCornerShape(16.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text("Revisi:", color = darkBlue, fontWeight = FontWeight.Bold)
+                revisiList.forEachIndexed { i, ket ->
+                    Text("${i + 1}. $ket", color = darkBlue)
+                }
+
+                // Tampilkan gambar jika ada
+                if (!gambar.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    AsyncImage(
+                        model = gambar,
+                        contentDescription = "Gambar Revisi",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         }
     }

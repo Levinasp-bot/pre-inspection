@@ -1434,7 +1434,7 @@ class OutstandingActivity : ComponentActivity() {
 
                                                                             val imgField = "gambar_perbaikan_$index"
                                                                             val ketField = "keterangan_perbaikan_$index"
-                                                                            val timeField = "eterangan_perbaikan_${index}_timestamp"
+                                                                            val timeField = "keterangan_perbaikan_${index}_timestamp"
 
                                                                             val updateData = mapOf(
                                                                                 imgField to imageUrl,

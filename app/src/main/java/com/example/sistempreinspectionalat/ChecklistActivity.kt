@@ -55,6 +55,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
+import okhttp3.MediaType.Companion.toMediaType
 
 class ChecklistActivity : ComponentActivity() {
     private val cloudinaryUrl = "https://api.cloudinary.com/v1_1/dutgwdhss/image/upload"
@@ -290,7 +291,6 @@ class ChecklistActivity : ComponentActivity() {
                                             data[key] = kondisiMap[item] ?: ""
                                         }
 
-
                                         //data["status"] = statusAlat.value
 
                                         // 🔹 STEP 1: simpan ke checklist
@@ -422,7 +422,45 @@ class ChecklistActivity : ComponentActivity() {
 
                                                 Toast.makeText(context, "Checklist berhasil disimpan", Toast.LENGTH_SHORT).show()
 
-                                                // 🔹 STEP 5: kembali ke MainActivity
+                                                if (itemTidakNormal.isNotEmpty()) {
+                                                    val keteranganGabungan = itemTidakNormal.joinToString("\n") {
+                                                        "- $it: ${keteranganMap[it] ?: "-"}"
+                                                    }
+
+                                                    val jsonBody = JSONObject().apply {
+                                                        put("kode_alat", kodeAlat)
+                                                        put("tanggal", tanggal)
+                                                        put("shift", shift)
+                                                        put("nama", userName.value)
+                                                        put("checklist", JSONArray(itemTidakNormal))
+                                                        put("keterangan", keteranganGabungan)
+                                                    }
+
+                                                    val client = OkHttpClient()
+                                                    val requestBody = RequestBody.create(
+                                                        "application/json; charset=utf-8".toMediaTypeOrNull(),
+                                                        jsonBody.toString()
+                                                    )
+
+                                                    val request = Request.Builder()
+                                                        .url("https://script.google.com/macros/s/AKfycbzZuShOBdWmR9nceO7PmzqjZgf56B1lLVeHO57rGtfs6dHfHaVWqADnRFFdQJkhe_ad/exec") // ganti dengan URL Apps Script kamu
+                                                        .post(requestBody)
+                                                        .build()
+
+                                                    client.newCall(request).enqueue(object : Callback {
+                                                        override fun onFailure(call: Call, e: IOException) {
+                                                            Log.e("NotifikasiEmail", "Gagal kirim notifikasi: ${e.message}")
+                                                        }
+
+                                                        override fun onResponse(call: Call, response: Response) {
+                                                            if (response.isSuccessful) {
+                                                                Log.d("NotifikasiEmail", "Berhasil kirim notifikasi ke email")
+                                                            } else {
+                                                                Log.e("NotifikasiEmail", "Gagal: ${response.body?.string()}")
+                                                            }
+                                                        }
+                                                    })
+                                                }
                                                 val intent = Intent(this@ChecklistActivity, MainActivity::class.java)
                                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                                 startActivity(intent)
@@ -430,7 +468,6 @@ class ChecklistActivity : ComponentActivity() {
                                             }
                                             .addOnFailureListener {
                                                 Toast.makeText(context, "Gagal menyimpan checklist", Toast.LENGTH_SHORT).show()
-                                                Log.e("Checklist", "Gagal simpan checklist: ${it.message}")
                                             }
                                     }
                                 },
@@ -497,7 +534,6 @@ class ChecklistActivity : ComponentActivity() {
             item.contains("slewing", ignoreCase = true) -> listOf("BERFUNGSI", "TIDAK BERFUNGSI")
             else -> listOf("BAIK", "TIDAK BAIK")
         }
-
 
         if (showDialog.value) {
             AlertDialog(
@@ -604,6 +640,8 @@ class ChecklistActivity : ComponentActivity() {
             }
         }
     }
+
+    val client = OkHttpClient()
 
     fun uploadImageToCloudinary(bitmap: Bitmap, onResult: (String?) -> Unit) {
 
