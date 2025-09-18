@@ -1669,11 +1669,14 @@ class OutstandingActivity : ComponentActivity() {
                                                                         val index = getNextPerbaikanRevisionIndex(doc.data ?: emptyMap())
                                                                         val nextFieldImage = "gambar_perbaikan_$index"
                                                                         val nextFieldText = "keterangan_perbaikan_$index"
+                                                                        val nextFieldTimestamp = "keterangan_perbaikan_${index}_timestamp"
 
                                                                         val updateData = mutableMapOf<String, Any>(
                                                                             nextFieldText to perbaikanKeterangan.filter { it.isNotBlank() },
-                                                                            "status_perbaikan" to "menunggu konfirmasi teknik"
+                                                                            "status_perbaikan" to "menunggu konfirmasi teknik",
+                                                                            nextFieldTimestamp to FieldValue.serverTimestamp()
                                                                         )
+
                                                                         imageUrl?.let {
                                                                             updateData[nextFieldImage] = it
                                                                         }
