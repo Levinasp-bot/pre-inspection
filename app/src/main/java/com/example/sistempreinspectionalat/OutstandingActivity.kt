@@ -589,7 +589,8 @@ class OutstandingActivity : ComponentActivity() {
                                                                             "estimasi_jam_$nextIndex" to estimasiJam.value,
                                                                             "estimasi_menit_$nextIndex" to estimasiMenit.value,
                                                                             "status_sparepart_$nextIndex" to selectedSparepartStatus.value,
-                                                                            "status_perbaikan" to "menunggu tanggapan teknik"
+                                                                            "status_perbaikan" to "menunggu tanggapan teknik",
+                                                                            "status" to "READY FOR USE"
                                                                         )
 
                                                                         if (selectedSparepartStatus.value == "Indent") {
@@ -928,7 +929,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                                 nextFieldInstruksi to konfirmasiKeterangan.filter { it.isNotBlank() },
                                                                                 nextFieldTimestamp to FieldValue.serverTimestamp(),
                                                                                 "status_perbaikan" to statusPerbaikan,
-                                                                                "status_alat" to statusAlat
+                                                                                "status" to statusAlat
                                                                             )
                                                                         )
                                                                         .addOnSuccessListener {
