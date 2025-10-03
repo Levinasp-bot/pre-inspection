@@ -108,20 +108,22 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         }
     ) {
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.White,
             topBar = {} // Kosongkan
         ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .background(Color.White)
             ) {
-                // Background
                 Image(
                     painter = painterResource(id = R.drawable.home_bg),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f) // atur sesuai rasio background
                 )
 
                 // Manual Icon Menu di pojok kiri atas
@@ -135,7 +137,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "Menu",
-                        tint = Color(0xFF003366)
+                        tint = Color.White
                     )
                 }
 

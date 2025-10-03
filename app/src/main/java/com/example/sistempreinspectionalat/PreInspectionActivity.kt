@@ -5,7 +5,6 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,14 +27,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.ui.input.pointer.pointerInput
-
 
 class PreInspectionActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -44,11 +37,12 @@ class PreInspectionActivity : ComponentActivity() {
         setContent {
             SistemPreinspectionAlatTheme {
                 PreInspectionScreen(
-                    onNext = { tanggal, shift, alat ->
+                    onNext = { tanggal, shift, alat, kapal ->
                         val intent = Intent(this, ChecklistActivity::class.java)
                         intent.putExtra("tanggal", tanggal)
                         intent.putExtra("shift", shift)
                         intent.putExtra("kode_alat", alat)
+                        intent.putExtra("nama_kapal", kapal) // ⬅️ kirim nama kapal
                         startActivity(intent)
                     }
                 )
@@ -60,20 +54,21 @@ class PreInspectionActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun PreInspectionScreen(onNext: (String, String, String) -> Unit) {
+fun PreInspectionScreen(onNext: (String, String, String, String) -> Unit) {
     val context = LocalContext.current
     val darkBlue = Color(0xFF003366)
     val white = Color.White
 
     var selectedDate by remember { mutableStateOf("") }
     var selectedShift by remember { mutableStateOf("") }
-    var selectedAlat by remember { mutableStateOf("") }
 
-    val shiftOptions = listOf("Shift 1", "Shift 2", "Shift 3")
+    val shiftOptions = listOf("Shift 1 (08.00 - 16.00)", "Shift 2 (16.00 - 00.00)", "Shift 3 (00.00 - 08.00)")
 
-    val alatList = remember { mutableStateListOf<String>() }
     var alatExpanded by remember { mutableStateOf(false) }
     var shiftExpanded by remember { mutableStateOf(false) }
+    var namaKapal by remember { mutableStateOf("") }
+    val alatList = remember { mutableStateListOf<Pair<String, String>>() }
+    var selectedAlat by remember { mutableStateOf("") }
 
     // ⏱ Ambil data alat dari Firestore
     LaunchedEffect(true) {
@@ -83,13 +78,9 @@ fun PreInspectionScreen(onNext: (String, String, String) -> Unit) {
                 alatList.clear()
                 for (document in result) {
                     val kode = document.getString("kode_alat")
-                    Log.d("PreInspection", "Alat ditemukan: $kode") // ✅ Tambahkan log
-                    if (!kode.isNullOrEmpty()) alatList.add(kode)
+                    val nama = document.getString("nama") ?: ""
+                    if (!kode.isNullOrEmpty()) alatList.add(kode to nama)
                 }
-                Log.d("PreInspection", "Total alat: ${alatList.size}")
-            }
-            .addOnFailureListener {
-                Log.e("PreInspection", "Gagal ambil data alat", it)
             }
     }
 
@@ -144,7 +135,7 @@ fun PreInspectionScreen(onNext: (String, String, String) -> Unit) {
                     onDateSelected = { selectedDate = it }
                 )
 
-                // 🔽 Kode Alat
+                // 🔽 Dropdown Kode Alat
                 ExposedDropdownMenuBox(
                     expanded = alatExpanded,
                     onExpandedChange = { alatExpanded = !alatExpanded }
@@ -172,11 +163,11 @@ fun PreInspectionScreen(onNext: (String, String, String) -> Unit) {
                         expanded = alatExpanded,
                         onDismissRequest = { alatExpanded = false }
                     ) {
-                        alatList.forEach { alat ->
+                        alatList.forEach { (kode, nama) ->
                             DropdownMenuItem(
-                                text = { Text(alat) },
+                                text = { Text("$kode ($nama)") }, // tampilkan keduanya
                                 onClick = {
-                                    selectedAlat = alat
+                                    selectedAlat = kode // ⬅️ hanya simpan kode
                                     alatExpanded = false
                                 }
                             )
@@ -224,13 +215,29 @@ fun PreInspectionScreen(onNext: (String, String, String) -> Unit) {
                     }
                 }
 
+                OutlinedTextField(
+                    value = namaKapal,
+                    onValueChange = { namaKapal = it },
+                    label = { Text("Nama Kapal (Opsional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = darkBlue,
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedTextColor = darkBlue,
+                        unfocusedTextColor = darkBlue,
+                        focusedLabelColor = Color.Gray,
+                        unfocusedLabelColor = Color.Gray,
+                        cursorColor = darkBlue
+                    )
+                )
+
                 // 🔘 Tombol Selanjutnya
                 Button(
                     onClick = {
                         if (selectedDate.isEmpty() || selectedShift.isEmpty() || selectedAlat.isEmpty()) {
                             Toast.makeText(context, "Lengkapi semua field!", Toast.LENGTH_SHORT).show()
                         } else {
-                            onNext(selectedDate, selectedShift, selectedAlat)
+                            onNext(selectedDate, selectedShift, selectedAlat, namaKapal)
                         }
                     },
                     modifier = Modifier
@@ -287,5 +294,3 @@ fun DatePickerBox(
         )
     }
 }
-
-

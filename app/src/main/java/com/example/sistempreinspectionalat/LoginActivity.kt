@@ -75,9 +75,8 @@ fun LoginScreen() {
                     .padding(bottom = 24.dp)
             )
 
-            // Judul lebih besar dan berjarak
             Text(
-                text = "?????",
+                text = "P-Inspect Pro",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

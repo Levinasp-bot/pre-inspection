@@ -68,6 +68,7 @@ class ChecklistActivity : ComponentActivity() {
         val tanggal = intent.getStringExtra("tanggal") ?: ""
         val shift = intent.getStringExtra("shift") ?: ""
 
+
         setContent {
             SistemPreinspectionAlatTheme {
                 ChecklistScreen(
@@ -282,7 +283,8 @@ class ChecklistActivity : ComponentActivity() {
                                         val data = hashMapOf(
                                             "kode_alat" to kodeAlat,
                                             "shift" to shift,
-                                            "tanggal" to tanggal,
+                                            "tanggal" to tanggal, // string "yyyy-MM-dd"
+                                            "timestamp" to FieldValue.serverTimestamp(), // ⏰ tambahan timestamp
                                             "operator" to userName.value
                                         )
 
@@ -509,9 +511,7 @@ class ChecklistActivity : ComponentActivity() {
         val darkBlue = Color(0xFF003366)
         val cameraLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.TakePicturePreview()
-        ) { bitmap ->
-            bitmap?.let { onImageCapture(it) }
-        }
+        ) { bitmap -> bitmap?.let { onImageCapture(it) } }
 
         val galleryLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.GetContent()
@@ -522,14 +522,19 @@ class ChecklistActivity : ComponentActivity() {
             }
         }
 
+        val kondisiTidakNormalSet = setOf(
+            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
+            "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
+        )
+
         val radioOptions = when {
             item.contains("oli", ignoreCase = true) -> listOf("YA", "TIDAK")
             item.contains("lampu", ignoreCase = true) -> listOf("NYALA", "TIDAK NYALA")
             item.contains("ban", ignoreCase = true) -> listOf("YA", "TIDAK")
             item.contains("tangga", ignoreCase = true) -> listOf("RUSAK", "TIDAK")
             item.contains("area kabin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
-            item.contains("ruang mesin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")   // ✅ Tambah
-            item.contains("sekitar alat", ignoreCase = true) -> listOf("BERSIH", "KOTOR") // ✅ Tambah
+            item.contains("ruang mesin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
+            item.contains("sekitar alat", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
             item.contains("gerakan", ignoreCase = true) -> listOf("NORMAL", "TIDAK NORMAL")
             item.contains("slewing", ignoreCase = true) -> listOf("BERFUNGSI", "TIDAK BERFUNGSI")
             else -> listOf("BAIK", "TIDAK BAIK")
@@ -538,7 +543,7 @@ class ChecklistActivity : ComponentActivity() {
         if (showDialog.value) {
             AlertDialog(
                 onDismissRequest = { showDialog.value = false },
-                title = { Text("Pilih Sumber Gambar") },
+                title = { Text("Pilih Foto") },
                 confirmButton = {
                     TextButton(onClick = {
                         cameraLauncher.launch(null)
@@ -558,82 +563,88 @@ class ChecklistActivity : ComponentActivity() {
             )
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = item,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = item,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    radioOptions.forEach { option ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = kondisi == option,
-                                onClick = { onKondisiChange(option) }
-                            )
-                            Text(text = option)
-                        }
+            // Radio button baris
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                radioOptions.forEach { option ->
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        RadioButton(
+                            selected = kondisi == option,
+                            onClick = { onKondisiChange(option) }
+                        )
+                        Text(text = option, fontSize = 14.sp)
                     }
                 }
+            }
 
-                if (kondisi in listOf("YA", "TIDAK NYALA", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI", "TIDAK BAIK", "RUSAK")) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = keterangan,
-                        onValueChange = { onKeteranganChange(it) },
-                        label = { Text("Keterangan") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = darkBlue,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedTextColor = darkBlue,
-                            unfocusedTextColor = darkBlue,
-                            focusedLabelColor = Color.Gray,
-                            unfocusedLabelColor = Color.Gray,
-                            cursorColor = darkBlue
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Selalu tampilkan TextField
+            OutlinedTextField(
+                value = keterangan,
+                onValueChange = { onKeteranganChange(it) },
+                label = {
+                    if (kondisi in kondisiTidakNormalSet) {
+                        Text("Keterangan (Wajib)")
+                    } else {
+                        Text("Keterangan (Opsional)")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = darkBlue,
+                    unfocusedBorderColor = Color.LightGray,
+                    focusedTextColor = darkBlue,
+                    unfocusedTextColor = darkBlue,
+                    focusedLabelColor = Color.Gray,
+                    unfocusedLabelColor = Color.Gray,
+                    cursorColor = darkBlue
+                )
+            )
+
+            // Foto hanya jika kondisi tidak normal
+            if (kondisi in kondisiTidakNormalSet) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Gray.copy(alpha = 0.1f))
+                        .clickable { showDialog.value = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageBitmap != null) {
+                        Image(
+                            bitmap = imageBitmap.asImageBitmap(),
+                            contentDescription = "Hasil Foto",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Gray.copy(alpha = 0.1f))
-                            .clickable { showDialog.value = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (imageBitmap != null) {
-                            Image(
-                                bitmap = imageBitmap.asImageBitmap(),
-                                contentDescription = "Hasil Foto",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.AddCircle,
+                                contentDescription = "Upload",
+                                modifier = Modifier.size(48.dp),
+                                tint = Color.Gray
                             )
-                        } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.AddCircle,
-                                    contentDescription = "Upload",
-                                    modifier = Modifier.size(48.dp),
-                                    tint = Color.Gray
-                                )
-                                Text("Ambil atau Pilih Foto", color = Color.Gray)
-                            }
+                            Text("Ambil atau Pilih Foto", color = Color.Gray)
                         }
                     }
                 }

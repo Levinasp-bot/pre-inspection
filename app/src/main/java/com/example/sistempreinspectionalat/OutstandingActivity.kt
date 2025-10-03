@@ -100,6 +100,11 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.firestore.FieldValue
 import android.os.Handler
 import android.os.Looper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 
 class OutstandingActivity : ComponentActivity() {
@@ -138,6 +143,11 @@ class OutstandingActivity : ComponentActivity() {
         ) { uri: Uri? ->
             perbaikanFotoUri.value = uri
         }
+        // URL Web App GAS (hasil deploy 2 file terpisah)
+        val urlReject = "https://script.google.com/macros/s/AKfycbx2fjLbWq7OscgpR9vWuhRGwyyUU-YUYG-N_Lrbp13bJ-45D574feGQBQZPvYC5asnUhQ/exec"
+        val urlKonfirmasi = "https://script.google.com/macros/s/AKfycby-5zu0Nbvnb8-aJAVYxVkj_zyZjcNTkilPdhNf7r3WeTLF-DYYAeX6ZQVLn5uFsZAp/exec"
+
+        val client = OkHttpClient()
 
         LaunchedEffect(reloadTrigger.value) {
             val firestore = FirebaseFirestore.getInstance()
@@ -614,6 +624,45 @@ class OutstandingActivity : ComponentActivity() {
                                                                                 isSubmitting.value =
                                                                                     false
                                                                             }
+
+                                                                        val url = "https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec"
+
+                                                                        val data = mapOf(
+                                                                            "kode_alat" to kodeAlat,
+                                                                            "tanggal" to (checklist["tanggal"] ?: ""),
+                                                                            "item" to (checklist["item"] ?: ""),
+                                                                            "tanggapan" to tanggapanList,
+                                                                            "estimasi_hari" to estimasiHari.value,
+                                                                            "estimasi_jam" to estimasiJam.value,
+                                                                            "estimasi_menit" to estimasiMenit.value,
+                                                                            "status_sparepart" to selectedSparepartStatus.value
+                                                                        )
+
+                                                                        val jsonData = JSONObject(data).toString()
+
+                                                                        val client = OkHttpClient()
+                                                                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                                                                        val body = jsonData.toRequestBody(mediaType)
+
+                                                                        val request = Request.Builder()
+                                                                            .url(url)
+                                                                            .post(body)
+                                                                            .build()
+
+                                                                        CoroutineScope(Dispatchers.IO).launch {
+                                                                            try {
+                                                                                client.newCall(request).execute().use { response ->
+                                                                                    if (!response.isSuccessful) {
+                                                                                        Log.e("GAS", "Error: ${response.code} - ${response.message}")
+                                                                                    } else {
+                                                                                        Log.d("GAS", "Email sent: ${response.body?.string()}")
+                                                                                    }
+                                                                                }
+                                                                            } catch (e: Exception) {
+                                                                                Log.e("GAS", "Exception: ${e.message}")
+                                                                            }
+                                                                        }
+
                                                                     } else {
                                                                         isSubmitting.value = false
                                                                     }
@@ -779,6 +828,31 @@ class OutstandingActivity : ComponentActivity() {
                                                                             showDialogReject.value = false
                                                                             isSubmitting.value = false
                                                                             reloadTrigger.value = !reloadTrigger.value
+                                                                            // Kirim notifikasi Reject via GAS
+                                                                            val jsonReject = JSONObject(
+                                                                                mapOf(
+                                                                                    "kode_alat" to kodeAlat,
+                                                                                    "tanggal" to (checklist["tanggal"] ?: ""),
+                                                                                    "item" to (checklist["item"] ?: ""),
+                                                                                    "alasan" to rejectKeterangan.filter { it.isNotBlank() }.joinToString("; ")
+                                                                                )
+                                                                            ).toString()
+
+                                                                            val bodyReject = jsonReject.toRequestBody("application/json; charset=utf-8".toMediaType())
+                                                                            val requestReject = Request.Builder()
+                                                                                .url(urlReject)
+                                                                                .post(bodyReject)
+                                                                                .build()
+
+                                                                            CoroutineScope(Dispatchers.IO).launch {
+                                                                                try {
+                                                                                    client.newCall(requestReject).execute().use { resp ->
+                                                                                        Log.d("GAS", "Reject notification sent: ${resp.body?.string()}")
+                                                                                    }
+                                                                                } catch (e: Exception) {
+                                                                                    Log.e("GAS", "Reject notify error: ${e.message}")
+                                                                                }
+                                                                            }
                                                                         }
                                                                 } else {
                                                                     isSubmitting.value = false
@@ -950,6 +1024,33 @@ class OutstandingActivity : ComponentActivity() {
                                                                                                 showDialogKonfirmasi.value = false
                                                                                                 isSubmitting.value = false
                                                                                                 reloadTrigger.value = !reloadTrigger.value
+                                                                                                // Kirim notifikasi Konfirmasi via GAS
+                                                                                                val jsonKonfirmasi = JSONObject(
+                                                                                                    mapOf(
+                                                                                                        "kode_alat" to kodeAlat,
+                                                                                                        "tanggal" to (checklist["tanggal"] ?: ""),
+                                                                                                        "item" to (checklist["item"] ?: ""),
+                                                                                                        "instruksi" to konfirmasiKeterangan.filter { it.isNotBlank() }.joinToString("; "),
+                                                                                                        "status_alat" to statusAlat,
+                                                                                                        "status_perbaikan" to statusPerbaikan
+                                                                                                    )
+                                                                                                ).toString()
+
+                                                                                                val bodyKonfirmasi = jsonKonfirmasi.toRequestBody("application/json; charset=utf-8".toMediaType())
+                                                                                                val requestKonfirmasi = Request.Builder()
+                                                                                                    .url(urlKonfirmasi)
+                                                                                                    .post(bodyKonfirmasi)
+                                                                                                    .build()
+
+                                                                                                CoroutineScope(Dispatchers.IO).launch {
+                                                                                                    try {
+                                                                                                        client.newCall(requestKonfirmasi).execute().use { resp ->
+                                                                                                            Log.d("GAS", "Konfirmasi notification sent: ${resp.body?.string()}")
+                                                                                                        }
+                                                                                                    } catch (e: Exception) {
+                                                                                                        Log.e("GAS", "Konfirmasi notify error: ${e.message}")
+                                                                                                    }
+                                                                                                }
                                                                                             }
                                                                                     } else {
                                                                                         isSubmitting.value = false
@@ -1080,11 +1181,44 @@ class OutstandingActivity : ComponentActivity() {
                                                                             )
                                                                         )
                                                                         .addOnSuccessListener {
-                                                                            isSubmitting.value =
-                                                                                false
+                                                                            isSubmitting.value = false
                                                                             checklistList.clear()
-                                                                            reloadTrigger.value =
-                                                                                !reloadTrigger.value
+                                                                            reloadTrigger.value = !reloadTrigger.value
+
+                                                                            val client = OkHttpClient()
+                                                                            val url = "https://script.google.com/macros/s/AKfycbxknth6uQ7ICLgeBZaCHjTSkHJotvSGEkGe5OT60RXeCqbsG1cSICqwy25ICe8hQxVKtA/exec" // ganti URL Web App kamu
+
+                                                                            val json = JSONObject().apply {
+                                                                                put("kode_alat", kodeAlat)
+                                                                                put("item", checklist["item"].toString())
+                                                                                put("tanggal", checklist["tanggal"].toString())
+                                                                            }
+
+                                                                            val body = RequestBody.create(
+                                                                                "application/json; charset=utf-8".toMediaTypeOrNull(),
+                                                                                json.toString()
+                                                                            )
+
+                                                                            val request = Request.Builder()
+                                                                                .url(url)
+                                                                                .post(body)
+                                                                                .build()
+
+                                                                            client.newCall(request).enqueue(object : Callback {
+                                                                                override fun onFailure(call: Call, e: IOException) {
+                                                                                    Log.e("GAS", "Gagal kirim notifikasi: ${e.message}")
+                                                                                }
+
+                                                                                override fun onResponse(call: Call, response: Response) {
+                                                                                    response.use {
+                                                                                        if (!response.isSuccessful) {
+                                                                                            Log.e("GAS", "Response gagal: ${response.code}")
+                                                                                        } else {
+                                                                                            Log.d("GAS", "Notifikasi sukses: ${response.body?.string()}")
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            })
                                                                         }
                                                                 }
                                                             }
@@ -1253,6 +1387,31 @@ class OutstandingActivity : ComponentActivity() {
                                                                                         checklistList.clear()
                                                                                         reloadTrigger.value =
                                                                                             !reloadTrigger.value
+
+                                                                                        val url = "https://script.google.com/macros/s/AKfycbzpCgmP3HVSTIQSVKHgVByeDwuKepTYCc5GzhQSWLiqIYpuRbXIf7vDa2OmtSunV9MU_g/exec"
+                                                                                        val data = mapOf(
+                                                                                            "kode_alat" to kodeAlat,
+                                                                                            "tanggal" to (checklist["tanggal"] ?: ""),
+                                                                                            "item" to (checklist["item"] ?: ""),
+                                                                                            "status_perbaikan" to "menunggu konfirmasi teknik"
+                                                                                        )
+                                                                                        val jsonData = JSONObject(data).toString()
+
+                                                                                        val client = OkHttpClient()
+                                                                                        val body = jsonData.toRequestBody("application/json".toMediaType())
+                                                                                        val request = Request.Builder()
+                                                                                            .url(url)
+                                                                                            .post(body)
+                                                                                            .build()
+
+                                                                                        CoroutineScope(Dispatchers.IO).launch {
+                                                                                            try {
+                                                                                                val response = client.newCall(request).execute()
+                                                                                                Log.d("GAS", "Email sent: ${response.body?.string()}")
+                                                                                            } catch (e: Exception) {
+                                                                                                Log.e("GAS", "Error: ${e.message}")
+                                                                                            }
+                                                                                        }
                                                                                     }
                                                                             }
                                                                         }
@@ -1448,6 +1607,31 @@ class OutstandingActivity : ComponentActivity() {
                                                                                 .document(docId)
                                                                                 .update(updateData)
                                                                                 .addOnSuccessListener {
+                                                                                    // 🔹 Kirim notifikasi email via Apps Script (Revisi)
+                                                                                    val urlRevisi = "https://script.google.com/macros/s/AKfycb-revisi/exec"
+                                                                                    val client = OkHttpClient()
+                                                                                    val jsonBody = JSONObject().apply {
+                                                                                        put("kode_alat", kodeAlat)
+                                                                                        put("tanggal", checklist["tanggal"])
+                                                                                        put("item", checklist["item"])
+                                                                                        put("keterangan", keteranganPerbaikan.value)
+                                                                                    }.toString()
+
+                                                                                    val body = RequestBody.create("application/json".toMediaType(), jsonBody)
+                                                                                    val request = Request.Builder()
+                                                                                        .url(urlRevisi)
+                                                                                        .post(body)
+                                                                                        .build()
+
+                                                                                    Thread {
+                                                                                        try {
+                                                                                            val response = client.newCall(request).execute()
+                                                                                            Log.d("APPS_SCRIPT", "Revisi sukses: ${response.body?.string()}")
+                                                                                        } catch (e: Exception) {
+                                                                                            Log.e("APPS_SCRIPT", "Revisi gagal", e)
+                                                                                        }
+                                                                                    }.start()
+
                                                                                     keteranganPerbaikan.value = ""
                                                                                     perbaikanFotoUri.value = null
                                                                                     checklistList.clear()
@@ -1571,9 +1755,32 @@ class OutstandingActivity : ComponentActivity() {
                                                             .document(docId)
                                                             .update(update)
                                                             .addOnSuccessListener {
+                                                                // 🔹 Kirim notifikasi email via Apps Script (Konfirmasi)
+                                                                val urlKonfirmasi = "https://script.google.com/macros/s/AKfycbzosv_qLE5gVtqBvk0tBOR-5qQFitBj1hT8d8HQPoRnbp1uJJfypAqej7wjs-EcJWeR/exec"
+                                                                val client = OkHttpClient()
+                                                                val jsonBody = JSONObject().apply {
+                                                                    put("kode_alat", kodeAlat)
+                                                                    put("tanggal", checklist["tanggal"])
+                                                                    put("item", checklist["item"])
+                                                                }.toString()
+
+                                                                val body = RequestBody.create("application/json".toMediaType(), jsonBody)
+                                                                val request = Request.Builder()
+                                                                    .url(urlKonfirmasi)
+                                                                    .post(body)
+                                                                    .build()
+
+                                                                Thread {
+                                                                    try {
+                                                                        val response = client.newCall(request).execute()
+                                                                        Log.d("APPS_SCRIPT", "Konfirmasi sukses: ${response.body?.string()}")
+                                                                    } catch (e: Exception) {
+                                                                        Log.e("APPS_SCRIPT", "Konfirmasi gagal", e)
+                                                                    }
+                                                                }.start()
+
                                                                 checklistList.clear()
-                                                                reloadTrigger.value =
-                                                                    !reloadTrigger.value
+                                                                reloadTrigger.value = !reloadTrigger.value
                                                             }
                                                     }
                                                 }
@@ -1709,7 +1916,7 @@ class OutstandingActivity : ComponentActivity() {
                                                                         val client = OkHttpClient()
                                                                         val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json.toString())
                                                                         val request = Request.Builder()
-                                                                            .url("https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec")
+                                                                            .url("https://script.google.com/macros/s/AKfycbyi75C-IWENqNu6B7EB2i1iAca5PDd9eToVrG7y-lypozfvo-u5natJafUN8it_H5SR6Q/exec")
                                                                             .post(requestBody)
                                                                             .build()
 

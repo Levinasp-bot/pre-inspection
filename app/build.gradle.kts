@@ -76,5 +76,5 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
     // build.gradle (:app)
     implementation ("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
-
+    implementation ("com.android.volley:volley:1.2.1")
 }

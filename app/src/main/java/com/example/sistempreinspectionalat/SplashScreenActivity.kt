@@ -55,12 +55,12 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "Logo",
-                    modifier = Modifier.size(100.dp)
+                    modifier = Modifier.size(200.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "???????",
+                    text = "P-Inspect Pro",
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White
                 )

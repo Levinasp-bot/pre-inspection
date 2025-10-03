@@ -76,10 +76,12 @@ fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
                         .limit(1)
                         .get()
                         .addOnSuccessListener { alatDocs ->
-                            val namaAlat = if (!alatDocs.isEmpty)
-                                alatDocs.documents[0].getString("nama") ?: "Alat Tidak Dikenal"
-                            else
+                            val namaAlat = if (!alatDocs.isEmpty) {
+                                val rawName = alatDocs.documents[0].getString("nama") ?: "Alat Tidak Dikenal"
+                                formatNamaAlat(rawName)
+                            } else {
                                 "Alat Tidak Dikenal"
+                            }
 
                             val item = ReportItem(kodeAlat, namaAlat, tanggal, shift, operator)
                             reports.add(item)
@@ -165,4 +167,13 @@ fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
             }
         }
     }
+}
+
+fun formatNamaAlat(raw: String): String {
+    return raw.split("_")
+        .joinToString(" ") { word ->
+            word.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase() else it.toString()
+            }
+        }
 }

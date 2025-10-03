@@ -207,14 +207,20 @@ fun DetailLaporanScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
+                                        // 🔹 Format nama item
+                                        val formattedName = itemName
+                                            .replace("_", " ") // ganti _ dengan spasi
+                                            .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
                                         Text(
-                                            text = itemName,
+                                            text = formattedName,
                                             fontSize = 14.sp,
                                             color = darkBlue
                                         )
+
                                         val statusColor = when (status.uppercase()) {
                                             "YA", "RUSAK", "TIDAK NYALA", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI" -> Color.Red
-                                            "TIDAK", "NYALA", "BERSIH", "NORMAL", "BERFUNGSI"-> darkBlue // Dark Blue
+                                            "TIDAK", "NYALA", "BERSIH", "NORMAL", "BERFUNGSI" -> darkBlue
                                             else -> Color.Gray
                                         }
                                         Text(
