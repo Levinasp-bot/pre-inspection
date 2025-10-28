@@ -1213,113 +1213,152 @@ class OutstandingActivity : ComponentActivity() {
                                             )
                                         }
 
-                                        // Tombol Sparepart Sudah Tersedia
-                                        Button(
-                                            onClick = { showDialog.value = true },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF003366),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Sparepart Sudah Tersedia")
-                                        }
+                                        if (jabatanUser.value == "PT BIMA") {
+                                            // Tombol Sparepart Sudah Tersedia
+                                            Button(
+                                                onClick = { showDialog.value = true },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF003366),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Sparepart Sudah Tersedia")
+                                            }
 
-                                        // Dialog konfirmasi
-                                        if (showDialog.value) {
-                                            AlertDialog(
-                                                onDismissRequest = { showDialog.value = false },
-                                                confirmButton = {
-                                                    TextButton(onClick = {
-                                                        showDialog.value = false
-                                                        isSubmitting.value = true
-                                                        val firestore =
-                                                            FirebaseFirestore.getInstance()
-                                                        val docRef =
-                                                            firestore.collection("outstanding")
-                                                                .whereEqualTo("kode_alat", kodeAlat)
-                                                                .whereEqualTo(
-                                                                    "tanggal",
-                                                                    checklist["tanggal"]
-                                                                )
-                                                                .whereEqualTo(
-                                                                    "item",
-                                                                    checklist["item"]
-                                                                )
-                                                                .limit(1)
+                                            // Dialog konfirmasi
+                                            if (showDialog.value) {
+                                                AlertDialog(
+                                                    onDismissRequest = { showDialog.value = false },
+                                                    confirmButton = {
+                                                        TextButton(onClick = {
+                                                            showDialog.value = false
+                                                            isSubmitting.value = true
+                                                            val firestore =
+                                                                FirebaseFirestore.getInstance()
+                                                            val docRef =
+                                                                firestore.collection("outstanding")
+                                                                    .whereEqualTo(
+                                                                        "kode_alat",
+                                                                        kodeAlat
+                                                                    )
+                                                                    .whereEqualTo(
+                                                                        "tanggal",
+                                                                        checklist["tanggal"]
+                                                                    )
+                                                                    .whereEqualTo(
+                                                                        "item",
+                                                                        checklist["item"]
+                                                                    )
+                                                                    .limit(1)
 
-                                                        docRef.get()
-                                                            .addOnSuccessListener { result ->
-                                                                if (!result.isEmpty) {
-                                                                    val docId =
-                                                                        result.documents[0].id
-                                                                    firestore.collection("outstanding")
-                                                                        .document(docId)
-                                                                        .update(
-                                                                            mapOf(
-                                                                                "status_perbaikan" to "proses perbaikan alat oleh PT BIMA",
-                                                                                "sparepart_ready_timestamp" to FieldValue.serverTimestamp()
+                                                            docRef.get()
+                                                                .addOnSuccessListener { result ->
+                                                                    if (!result.isEmpty) {
+                                                                        val docId =
+                                                                            result.documents[0].id
+                                                                        firestore.collection("outstanding")
+                                                                            .document(docId)
+                                                                            .update(
+                                                                                mapOf(
+                                                                                    "status_perbaikan" to "proses perbaikan alat oleh PT BIMA",
+                                                                                    "sparepart_ready_timestamp" to FieldValue.serverTimestamp()
+                                                                                )
                                                                             )
-                                                                        )
-                                                                        .addOnSuccessListener {
-                                                                            isSubmitting.value = false
-                                                                            checklistList.clear()
-                                                                            reloadTrigger.value = !reloadTrigger.value
+                                                                            .addOnSuccessListener {
+                                                                                isSubmitting.value =
+                                                                                    false
+                                                                                checklistList.clear()
+                                                                                reloadTrigger.value =
+                                                                                    !reloadTrigger.value
 
-                                                                            val client = OkHttpClient()
-                                                                            val url = "https://script.google.com/macros/s/AKfycbxknth6uQ7ICLgeBZaCHjTSkHJotvSGEkGe5OT60RXeCqbsG1cSICqwy25ICe8hQxVKtA/exec" // ganti URL Web App kamu
+                                                                                val client =
+                                                                                    OkHttpClient()
+                                                                                val url =
+                                                                                    "https://script.google.com/macros/s/AKfycbxknth6uQ7ICLgeBZaCHjTSkHJotvSGEkGe5OT60RXeCqbsG1cSICqwy25ICe8hQxVKtA/exec" // ganti URL Web App kamu
 
-                                                                            val json = JSONObject().apply {
-                                                                                put("kode_alat", kodeAlat)
-                                                                                put("item", checklist["item"].toString())
-                                                                                put("tanggal", checklist["tanggal"].toString())
-                                                                            }
+                                                                                val json =
+                                                                                    JSONObject().apply {
+                                                                                        put(
+                                                                                            "kode_alat",
+                                                                                            kodeAlat
+                                                                                        )
+                                                                                        put(
+                                                                                            "item",
+                                                                                            checklist["item"].toString()
+                                                                                        )
+                                                                                        put(
+                                                                                            "tanggal",
+                                                                                            checklist["tanggal"].toString()
+                                                                                        )
+                                                                                    }
 
-                                                                            val body = RequestBody.create(
-                                                                                "application/json; charset=utf-8".toMediaTypeOrNull(),
-                                                                                json.toString()
-                                                                            )
+                                                                                val body =
+                                                                                    RequestBody.create(
+                                                                                        "application/json; charset=utf-8".toMediaTypeOrNull(),
+                                                                                        json.toString()
+                                                                                    )
 
-                                                                            val request = Request.Builder()
-                                                                                .url(url)
-                                                                                .post(body)
-                                                                                .build()
+                                                                                val request =
+                                                                                    Request.Builder()
+                                                                                        .url(url)
+                                                                                        .post(body)
+                                                                                        .build()
 
-                                                                            client.newCall(request).enqueue(object : Callback {
-                                                                                override fun onFailure(call: Call, e: IOException) {
-                                                                                    Log.e("GAS", "Gagal kirim notifikasi: ${e.message}")
-                                                                                }
+                                                                                client.newCall(
+                                                                                    request
+                                                                                ).enqueue(object :
+                                                                                    Callback {
+                                                                                    override fun onFailure(
+                                                                                        call: Call,
+                                                                                        e: IOException
+                                                                                    ) {
+                                                                                        Log.e(
+                                                                                            "GAS",
+                                                                                            "Gagal kirim notifikasi: ${e.message}"
+                                                                                        )
+                                                                                    }
 
-                                                                                override fun onResponse(call: Call, response: Response) {
-                                                                                    response.use {
-                                                                                        if (!response.isSuccessful) {
-                                                                                            Log.e("GAS", "Response gagal: ${response.code}")
-                                                                                        } else {
-                                                                                            Log.d("GAS", "Notifikasi sukses: ${response.body?.string()}")
+                                                                                    override fun onResponse(
+                                                                                        call: Call,
+                                                                                        response: Response
+                                                                                    ) {
+                                                                                        response.use {
+                                                                                            if (!response.isSuccessful) {
+                                                                                                Log.e(
+                                                                                                    "GAS",
+                                                                                                    "Response gagal: ${response.code}"
+                                                                                                )
+                                                                                            } else {
+                                                                                                Log.d(
+                                                                                                    "GAS",
+                                                                                                    "Notifikasi sukses: ${response.body?.string()}"
+                                                                                                )
+                                                                                            }
                                                                                         }
                                                                                     }
-                                                                                }
-                                                                            })
-                                                                        }
+                                                                                })
+                                                                            }
+                                                                    }
                                                                 }
-                                                            }
-                                                    }) {
-                                                        Text("Iya")
+                                                        }) {
+                                                            Text("Iya")
+                                                        }
+                                                    },
+                                                    dismissButton = {
+                                                        TextButton(onClick = {
+                                                            showDialog.value = false
+                                                        }) {
+                                                            Text("Tidak")
+                                                        }
+                                                    },
+                                                    title = { Text("Konfirmasi") },
+                                                    text = {
+                                                        Text("Apakah sparepart sudah tersedia dan siap dilakukan perbaikan?")
                                                     }
-                                                },
-                                                dismissButton = {
-                                                    TextButton(onClick = {
-                                                        showDialog.value = false
-                                                    }) {
-                                                        Text("Tidak")
-                                                    }
-                                                },
-                                                title = { Text("Konfirmasi") },
-                                                text = {
-                                                    Text("Apakah sparepart sudah tersedia dan siap dilakukan perbaikan?")
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                     }
 
@@ -1353,230 +1392,268 @@ class OutstandingActivity : ComponentActivity() {
                                             perbaikanFotoUri.value = uri
                                         }
 
-                                        Button(
-                                            onClick = { showPerbaikanDialog.value = true },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF003366),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Perbaikan Selesai")
-                                        }
+                                        if (jabatanUser.value == "PT BIMA") {
 
-                                        if (showPerbaikanDialog.value) {
-                                            AlertDialog(
-                                                onDismissRequest = {
-                                                    showPerbaikanDialog.value = false
-                                                    keteranganPerbaikan.value = ""
-                                                    perbaikanFotoUri.value = null
-                                                },
-                                                confirmButton = {
-                                                    Button(
-                                                        onClick = {
-                                                            showPerbaikanDialog.value = false
-                                                            isSubmitting.value = true
-                                                            val uri = perbaikanFotoUri.value
-                                                            if (uri == null) {
-                                                                Toast.makeText(
-                                                                    context,
-                                                                    "Silakan pilih foto terlebih dahulu",
-                                                                    Toast.LENGTH_SHORT
-                                                                ).show()
-                                                                isSubmitting.value = false
-                                                                return@Button
-                                                            }
+                                            Button(
+                                                onClick = { showPerbaikanDialog.value = true },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF003366),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Perbaikan Selesai")
+                                            }
 
-                                                            val bitmap =
-                                                                MediaStore.Images.Media.getBitmap(
-                                                                    context.contentResolver,
-                                                                    uri
-                                                                )
-
-                                                            uploadImageToCloudinary(bitmap) { imageUrl ->
-                                                                if (imageUrl != null) {
-                                                                    val firestore =
-                                                                        FirebaseFirestore.getInstance()
-                                                                    val docRef =
-                                                                        firestore.collection("outstanding")
-                                                                            .whereEqualTo(
-                                                                                "kode_alat",
-                                                                                kodeAlat
-                                                                            )
-                                                                            .whereEqualTo(
-                                                                                "tanggal",
-                                                                                checklist["tanggal"]
-                                                                            )
-                                                                            .whereEqualTo(
-                                                                                "item",
-                                                                                checklist["item"]
-                                                                            )
-                                                                            .limit(1)
-
-                                                                    docRef.get()
-                                                                        .addOnSuccessListener { result ->
-                                                                            if (!result.isEmpty) {
-                                                                                val doc =
-                                                                                    result.documents[0]
-                                                                                val docId = doc.id
-                                                                                val data = doc.data
-                                                                                    ?: emptyMap()
-
-                                                                                val index =
-                                                                                    data.keys
-                                                                                        .filter {
-                                                                                            it.startsWith(
-                                                                                                "keterangan_perbaikan_"
-                                                                                            )
-                                                                                        }
-                                                                                        .mapNotNull {
-                                                                                            it.removePrefix(
-                                                                                                "keterangan_perbaikan_"
-                                                                                            )
-                                                                                                .toIntOrNull()
-                                                                                        }
-                                                                                        .maxOrNull()
-                                                                                        ?.plus(1)
-                                                                                        ?: 0
-
-                                                                                val imgField =
-                                                                                    "gambar_perbaikan_$index"
-                                                                                val ketField =
-                                                                                    "keterangan_perbaikan_$index"
-                                                                                val timeField =
-                                                                                    "${ketField}_timestamp"
-
-                                                                                val updateData =
-                                                                                    mapOf(
-                                                                                        imgField to imageUrl,
-                                                                                        ketField to keteranganPerbaikan.value,
-                                                                                        timeField to FieldValue.serverTimestamp(),
-                                                                                        "status_perbaikan" to "menunggu konfirmasi teknik"
-                                                                                    )
-
-                                                                                firestore.collection(
-                                                                                    "outstanding"
-                                                                                ).document(docId)
-                                                                                    .update(
-                                                                                        updateData
-                                                                                    )
-                                                                                    .addOnSuccessListener {
-                                                                                        keteranganPerbaikan.value =
-                                                                                            ""
-                                                                                        perbaikanFotoUri.value =
-                                                                                            null
-                                                                                        checklistList.clear()
-                                                                                        reloadTrigger.value =
-                                                                                            !reloadTrigger.value
-
-                                                                                        val url = "https://script.google.com/macros/s/AKfycbzpCgmP3HVSTIQSVKHgVByeDwuKepTYCc5GzhQSWLiqIYpuRbXIf7vDa2OmtSunV9MU_g/exec"
-                                                                                        val data = mapOf(
-                                                                                            "kode_alat" to kodeAlat,
-                                                                                            "tanggal" to (checklist["tanggal"] ?: ""),
-                                                                                            "item" to (checklist["item"] ?: ""),
-                                                                                            "status_perbaikan" to "menunggu konfirmasi teknik"
-                                                                                        )
-                                                                                        val jsonData = JSONObject(data).toString()
-
-                                                                                        val client = OkHttpClient()
-                                                                                        val body = jsonData.toRequestBody("application/json".toMediaType())
-                                                                                        val request = Request.Builder()
-                                                                                            .url(url)
-                                                                                            .post(body)
-                                                                                            .build()
-
-                                                                                        CoroutineScope(Dispatchers.IO).launch {
-                                                                                            try {
-                                                                                                val response = client.newCall(request).execute()
-                                                                                                Log.d("GAS", "Email sent: ${response.body?.string()}")
-                                                                                            } catch (e: Exception) {
-                                                                                                Log.e("GAS", "Error: ${e.message}")
-                                                                                            }
-                                                                                        }
-                                                                                    }
-                                                                            }
-                                                                        }
-                                                                } else {
-                                                                    Toast.makeText(
-                                                                        context,
-                                                                        "Upload gambar gagal",
-                                                                        Toast.LENGTH_SHORT
-                                                                    ).show()
-                                                                }
-                                                            }
-                                                        },
-                                                        colors = ButtonDefaults.buttonColors(
-                                                            containerColor = Color(0xFF00695C)
-                                                        )
-                                                    ) {
-                                                        Text("Kirim", color = Color.White)
-                                                    }
-                                                },
-                                                dismissButton = {
-                                                    OutlinedButton(onClick = {
+                                            if (showPerbaikanDialog.value) {
+                                                AlertDialog(
+                                                    onDismissRequest = {
                                                         showPerbaikanDialog.value = false
                                                         keteranganPerbaikan.value = ""
                                                         perbaikanFotoUri.value = null
-                                                    }) {
-                                                        Text("Batal")
-                                                    }
-                                                },
-                                                title = {
-                                                    Text(
-                                                        "Laporan Perbaikan",
-                                                        style = MaterialTheme.typography.titleLarge
-                                                    )
-                                                },
-                                                text = {
-                                                    Column {
-                                                        Text("Masukkan keterangan dan unggah foto perbaikan:")
-                                                        Spacer(modifier = Modifier.height(12.dp))
+                                                    },
+                                                    confirmButton = {
+                                                        Button(
+                                                            onClick = {
+                                                                showPerbaikanDialog.value = false
+                                                                isSubmitting.value = true
+                                                                val uri = perbaikanFotoUri.value
+                                                                if (uri == null) {
+                                                                    Toast.makeText(
+                                                                        context,
+                                                                        "Silakan pilih foto terlebih dahulu",
+                                                                        Toast.LENGTH_SHORT
+                                                                    ).show()
+                                                                    isSubmitting.value = false
+                                                                    return@Button
+                                                                }
 
-                                                        OutlinedTextField(
-                                                            value = keteranganPerbaikan.value,
-                                                            onValueChange = {
-                                                                keteranganPerbaikan.value = it
+                                                                val bitmap =
+                                                                    MediaStore.Images.Media.getBitmap(
+                                                                        context.contentResolver,
+                                                                        uri
+                                                                    )
+
+                                                                uploadImageToCloudinary(bitmap) { imageUrl ->
+                                                                    if (imageUrl != null) {
+                                                                        val firestore =
+                                                                            FirebaseFirestore.getInstance()
+                                                                        val docRef =
+                                                                            firestore.collection("outstanding")
+                                                                                .whereEqualTo(
+                                                                                    "kode_alat",
+                                                                                    kodeAlat
+                                                                                )
+                                                                                .whereEqualTo(
+                                                                                    "tanggal",
+                                                                                    checklist["tanggal"]
+                                                                                )
+                                                                                .whereEqualTo(
+                                                                                    "item",
+                                                                                    checklist["item"]
+                                                                                )
+                                                                                .limit(1)
+
+                                                                        docRef.get()
+                                                                            .addOnSuccessListener { result ->
+                                                                                if (!result.isEmpty) {
+                                                                                    val doc =
+                                                                                        result.documents[0]
+                                                                                    val docId =
+                                                                                        doc.id
+                                                                                    val data =
+                                                                                        doc.data
+                                                                                            ?: emptyMap()
+
+                                                                                    val index =
+                                                                                        data.keys
+                                                                                            .filter {
+                                                                                                it.startsWith(
+                                                                                                    "keterangan_perbaikan_"
+                                                                                                )
+                                                                                            }
+                                                                                            .mapNotNull {
+                                                                                                it.removePrefix(
+                                                                                                    "keterangan_perbaikan_"
+                                                                                                )
+                                                                                                    .toIntOrNull()
+                                                                                            }
+                                                                                            .maxOrNull()
+                                                                                            ?.plus(1)
+                                                                                            ?: 0
+
+                                                                                    val imgField =
+                                                                                        "gambar_perbaikan_$index"
+                                                                                    val ketField =
+                                                                                        "keterangan_perbaikan_$index"
+                                                                                    val timeField =
+                                                                                        "${ketField}_timestamp"
+
+                                                                                    val updateData =
+                                                                                        mapOf(
+                                                                                            imgField to imageUrl,
+                                                                                            ketField to keteranganPerbaikan.value,
+                                                                                            timeField to FieldValue.serverTimestamp(),
+                                                                                            "status_perbaikan" to "menunggu konfirmasi teknik"
+                                                                                        )
+
+                                                                                    firestore.collection(
+                                                                                        "outstanding"
+                                                                                    ).document(
+                                                                                        docId
+                                                                                    )
+                                                                                        .update(
+                                                                                            updateData
+                                                                                        )
+                                                                                        .addOnSuccessListener {
+                                                                                            keteranganPerbaikan.value =
+                                                                                                ""
+                                                                                            perbaikanFotoUri.value =
+                                                                                                null
+                                                                                            checklistList.clear()
+                                                                                            reloadTrigger.value =
+                                                                                                !reloadTrigger.value
+
+                                                                                            val url =
+                                                                                                "https://script.google.com/macros/s/AKfycbzpCgmP3HVSTIQSVKHgVByeDwuKepTYCc5GzhQSWLiqIYpuRbXIf7vDa2OmtSunV9MU_g/exec"
+                                                                                            val data =
+                                                                                                mapOf(
+                                                                                                    "kode_alat" to kodeAlat,
+                                                                                                    "tanggal" to (checklist["tanggal"]
+                                                                                                        ?: ""),
+                                                                                                    "item" to (checklist["item"]
+                                                                                                        ?: ""),
+                                                                                                    "status_perbaikan" to "menunggu konfirmasi teknik"
+                                                                                                )
+                                                                                            val jsonData =
+                                                                                                JSONObject(
+                                                                                                    data
+                                                                                                ).toString()
+
+                                                                                            val client =
+                                                                                                OkHttpClient()
+                                                                                            val body =
+                                                                                                jsonData.toRequestBody(
+                                                                                                    "application/json".toMediaType()
+                                                                                                )
+                                                                                            val request =
+                                                                                                Request.Builder()
+                                                                                                    .url(
+                                                                                                        url
+                                                                                                    )
+                                                                                                    .post(
+                                                                                                        body
+                                                                                                    )
+                                                                                                    .build()
+
+                                                                                            CoroutineScope(
+                                                                                                Dispatchers.IO
+                                                                                            ).launch {
+                                                                                                try {
+                                                                                                    val response =
+                                                                                                        client.newCall(
+                                                                                                            request
+                                                                                                        )
+                                                                                                            .execute()
+                                                                                                    Log.d(
+                                                                                                        "GAS",
+                                                                                                        "Email sent: ${response.body?.string()}"
+                                                                                                    )
+                                                                                                } catch (e: Exception) {
+                                                                                                    Log.e(
+                                                                                                        "GAS",
+                                                                                                        "Error: ${e.message}"
+                                                                                                    )
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                }
+                                                                            }
+                                                                    } else {
+                                                                        Toast.makeText(
+                                                                            context,
+                                                                            "Upload gambar gagal",
+                                                                            Toast.LENGTH_SHORT
+                                                                        ).show()
+                                                                    }
+                                                                }
                                                             },
-                                                            placeholder = { Text("Contoh: Sudah diganti dengan part baru...") },
-                                                            modifier = Modifier.fillMaxWidth()
-                                                        )
-
-                                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                                        // ✅ Ganti Button jadi Column clickable
-                                                        Column(
-                                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .clickable { launcher.launch("image/*") }
-                                                                .padding(16.dp)
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Default.AddCircle,
-                                                                contentDescription = "Upload",
-                                                                modifier = Modifier.size(48.dp),
-                                                                tint = Color.Gray
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = Color(0xFF00695C)
                                                             )
-                                                            Text("Ambil atau Pilih Foto", color = Color.Gray)
+                                                        ) {
+                                                            Text("Kirim", color = Color.White)
                                                         }
+                                                    },
+                                                    dismissButton = {
+                                                        OutlinedButton(onClick = {
+                                                            showPerbaikanDialog.value = false
+                                                            keteranganPerbaikan.value = ""
+                                                            perbaikanFotoUri.value = null
+                                                        }) {
+                                                            Text("Batal")
+                                                        }
+                                                    },
+                                                    title = {
+                                                        Text(
+                                                            "Laporan Perbaikan",
+                                                            style = MaterialTheme.typography.titleLarge
+                                                        )
+                                                    },
+                                                    text = {
+                                                        Column {
+                                                            Text("Masukkan keterangan dan unggah foto perbaikan:")
+                                                            Spacer(modifier = Modifier.height(12.dp))
 
-                                                        Spacer(modifier = Modifier.height(12.dp))
+                                                            OutlinedTextField(
+                                                                value = keteranganPerbaikan.value,
+                                                                onValueChange = {
+                                                                    keteranganPerbaikan.value = it
+                                                                },
+                                                                placeholder = { Text("Contoh: Sudah diganti dengan part baru...") },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
 
-                                                        perbaikanFotoUri.value?.let {
-                                                            AsyncImage(
-                                                                model = it,
-                                                                contentDescription = null,
+                                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                                            // ✅ Ganti Button jadi Column clickable
+                                                            Column(
+                                                                horizontalAlignment = Alignment.CenterHorizontally,
                                                                 modifier = Modifier
                                                                     .fillMaxWidth()
-                                                                    .height(200.dp)
-                                                                    .clip(RoundedCornerShape(8.dp)),
-                                                                contentScale = ContentScale.Crop
-                                                            )
+                                                                    .clickable { launcher.launch("image/*") }
+                                                                    .padding(16.dp)
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.AddCircle,
+                                                                    contentDescription = "Upload",
+                                                                    modifier = Modifier.size(48.dp),
+                                                                    tint = Color.Gray
+                                                                )
+                                                                Text(
+                                                                    "Ambil atau Pilih Foto",
+                                                                    color = Color.Gray
+                                                                )
+                                                            }
+
+                                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                                            perbaikanFotoUri.value?.let {
+                                                                AsyncImage(
+                                                                    model = it,
+                                                                    contentDescription = null,
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .height(200.dp)
+                                                                        .clip(RoundedCornerShape(8.dp)),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            }
                                                         }
                                                     }
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                     }
 
@@ -1608,274 +1685,399 @@ class OutstandingActivity : ComponentActivity() {
                                             perbaikanFotoUri.value = uri
                                         }
 
-                                        // Tombol Revisi
-                                        Button(
-                                            onClick = { showPerbaikanDialog.value = true },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFFD32F2F),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Revisi")
-                                        }
+                                        if (jabatanUser.value == "teknik") {
+                                            // Tombol Revisi
+                                            Button(
+                                                onClick = { showPerbaikanDialog.value = true },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFFD32F2F),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Revisi")
+                                            }
 
-                                        if (showPerbaikanDialog.value) {
-                                            AlertDialog(
-                                                onDismissRequest = {
-                                                    showPerbaikanDialog.value = false
-                                                    keteranganPerbaikan.value = ""
-                                                    perbaikanFotoUri.value = null
-                                                },
-                                                confirmButton = {
-                                                    Button(
-                                                        onClick = {
-                                                            showPerbaikanDialog.value = false
-                                                            isSubmitting.value = true
-                                                            val uri = perbaikanFotoUri.value
-                                                            if (uri == null) {
-                                                                Toast.makeText(
-                                                                    context,
-                                                                    "Silakan pilih foto terlebih dahulu",
-                                                                    Toast.LENGTH_SHORT
-                                                                ).show()
-                                                                isSubmitting.value = false
-                                                                return@Button
-                                                            }
-
-                                                            // ✅ sama persis dengan kode lama (yang sukses upload)
-                                                            val bitmap = MediaStore.Images.Media.getBitmap(
-                                                                context.contentResolver,
-                                                                uri
-                                                            )
-
-                                                            uploadImageToCloudinary(bitmap) { imageUrl ->
-                                                                if (imageUrl != null) {
-                                                                    val firestore = FirebaseFirestore.getInstance()
-                                                                    val docRef = firestore.collection("outstanding")
-                                                                        .whereEqualTo("kode_alat", kodeAlat)
-                                                                        .whereEqualTo("tanggal", checklist["tanggal"])
-                                                                        .whereEqualTo("item", checklist["item"])
-                                                                        .limit(1)
-
-                                                                    docRef.get().addOnSuccessListener { result ->
-                                                                        if (!result.isEmpty) {
-                                                                            val doc = result.documents[0]
-                                                                            val docId = doc.id
-                                                                            val data = doc.data ?: emptyMap()
-
-                                                                            val index = data.keys
-                                                                                .filter { it.startsWith("keterangan_perbaikan_") }
-                                                                                .mapNotNull {
-                                                                                    it.removePrefix("keterangan_perbaikan_")
-                                                                                        .toIntOrNull()
-                                                                                }
-                                                                                .maxOrNull()
-                                                                                ?.plus(1) ?: 0
-
-                                                                            val imgField = "gambar_perbaikan_$index"
-                                                                            val ketField = "keterangan_perbaikan_$index"
-                                                                            val timeField = "keterangan_perbaikan_${index}_timestamp"
-
-                                                                            val updateData = mapOf(
-                                                                                imgField to imageUrl,
-                                                                                ketField to keteranganPerbaikan.value,
-                                                                                timeField to FieldValue.serverTimestamp(),
-                                                                                "status_perbaikan" to "perlu perbaikan ulang"
-                                                                            )
-
-                                                                            firestore.collection("outstanding")
-                                                                                .document(docId)
-                                                                                .update(updateData)
-                                                                                .addOnSuccessListener {
-                                                                                    // 🔹 Kirim notifikasi email via Apps Script (Revisi)
-                                                                                    val urlRevisi = "https://script.google.com/macros/s/AKfycb-revisi/exec"
-                                                                                    val client = OkHttpClient()
-                                                                                    val jsonBody = JSONObject().apply {
-                                                                                        put("kode_alat", kodeAlat)
-                                                                                        put("tanggal", checklist["tanggal"])
-                                                                                        put("item", checklist["item"])
-                                                                                        put("keterangan", keteranganPerbaikan.value)
-                                                                                    }.toString()
-
-                                                                                    val body = RequestBody.create("application/json".toMediaType(), jsonBody)
-                                                                                    val request = Request.Builder()
-                                                                                        .url(urlRevisi)
-                                                                                        .post(body)
-                                                                                        .build()
-
-                                                                                    Thread {
-                                                                                        try {
-                                                                                            val response = client.newCall(request).execute()
-                                                                                            Log.d("APPS_SCRIPT", "Revisi sukses: ${response.body?.string()}")
-                                                                                        } catch (e: Exception) {
-                                                                                            Log.e("APPS_SCRIPT", "Revisi gagal", e)
-                                                                                        }
-                                                                                    }.start()
-
-                                                                                    keteranganPerbaikan.value = ""
-                                                                                    perbaikanFotoUri.value = null
-                                                                                    checklistList.clear()
-                                                                                    reloadTrigger.value = !reloadTrigger.value
-                                                                                }
-                                                                        }
-                                                                    }
-                                                                } else {
-                                                                    Toast.makeText(
-                                                                        context,
-                                                                        "Upload ke Cloudinary gagal",
-                                                                        Toast.LENGTH_SHORT
-                                                                    ).show()
-                                                                }
-                                                            }
-                                                        },
-                                                        colors = ButtonDefaults.buttonColors(
-                                                            containerColor = Color(0xFF00695C)
-                                                        )
-                                                    ) {
-                                                        Text("Kirim", color = Color.White)
-                                                    }
-                                                },
-                                                dismissButton = {
-                                                    OutlinedButton(onClick = {
+                                            if (showPerbaikanDialog.value) {
+                                                AlertDialog(
+                                                    onDismissRequest = {
                                                         showPerbaikanDialog.value = false
                                                         keteranganPerbaikan.value = ""
                                                         perbaikanFotoUri.value = null
-                                                    }) {
-                                                        Text("Batal")
-                                                    }
-                                                },
-                                                title = {
-                                                    Text(
-                                                        "Revisi Perbaikan",
-                                                        style = MaterialTheme.typography.titleLarge
-                                                    )
-                                                },
-                                                text = {
-                                                    Column {
-                                                        Text("Masukkan keterangan dan unggah foto revisi:")
-                                                        Spacer(modifier = Modifier.height(12.dp))
+                                                    },
+                                                    confirmButton = {
+                                                        Button(
+                                                            onClick = {
+                                                                showPerbaikanDialog.value = false
+                                                                isSubmitting.value = true
+                                                                val uri = perbaikanFotoUri.value
+                                                                if (uri == null) {
+                                                                    Toast.makeText(
+                                                                        context,
+                                                                        "Silakan pilih foto terlebih dahulu",
+                                                                        Toast.LENGTH_SHORT
+                                                                    ).show()
+                                                                    isSubmitting.value = false
+                                                                    return@Button
+                                                                }
 
-                                                        OutlinedTextField(
-                                                            value = keteranganPerbaikan.value,
-                                                            onValueChange = { keteranganPerbaikan.value = it },
-                                                            placeholder = { Text("Contoh: Part tidak sesuai, perlu diganti ulang...") },
-                                                            modifier = Modifier.fillMaxWidth()
+                                                                // ✅ sama persis dengan kode lama (yang sukses upload)
+                                                                val bitmap =
+                                                                    MediaStore.Images.Media.getBitmap(
+                                                                        context.contentResolver,
+                                                                        uri
+                                                                    )
+
+                                                                uploadImageToCloudinary(bitmap) { imageUrl ->
+                                                                    if (imageUrl != null) {
+                                                                        val firestore =
+                                                                            FirebaseFirestore.getInstance()
+                                                                        val docRef =
+                                                                            firestore.collection("outstanding")
+                                                                                .whereEqualTo(
+                                                                                    "kode_alat",
+                                                                                    kodeAlat
+                                                                                )
+                                                                                .whereEqualTo(
+                                                                                    "tanggal",
+                                                                                    checklist["tanggal"]
+                                                                                )
+                                                                                .whereEqualTo(
+                                                                                    "item",
+                                                                                    checklist["item"]
+                                                                                )
+                                                                                .limit(1)
+
+                                                                        docRef.get()
+                                                                            .addOnSuccessListener { result ->
+                                                                                if (!result.isEmpty) {
+                                                                                    val doc =
+                                                                                        result.documents[0]
+                                                                                    val docId =
+                                                                                        doc.id
+                                                                                    val data =
+                                                                                        doc.data
+                                                                                            ?: emptyMap()
+
+                                                                                    val index =
+                                                                                        data.keys
+                                                                                            .filter {
+                                                                                                it.startsWith(
+                                                                                                    "keterangan_perbaikan_"
+                                                                                                )
+                                                                                            }
+                                                                                            .mapNotNull {
+                                                                                                it.removePrefix(
+                                                                                                    "keterangan_perbaikan_"
+                                                                                                )
+                                                                                                    .toIntOrNull()
+                                                                                            }
+                                                                                            .maxOrNull()
+                                                                                            ?.plus(1)
+                                                                                            ?: 0
+
+                                                                                    val imgField =
+                                                                                        "gambar_perbaikan_$index"
+                                                                                    val ketField =
+                                                                                        "keterangan_perbaikan_$index"
+                                                                                    val timeField =
+                                                                                        "keterangan_perbaikan_${index}_timestamp"
+
+                                                                                    val updateData =
+                                                                                        mapOf(
+                                                                                            imgField to imageUrl,
+                                                                                            ketField to keteranganPerbaikan.value,
+                                                                                            timeField to FieldValue.serverTimestamp(),
+                                                                                            "status_perbaikan" to "perlu perbaikan ulang"
+                                                                                        )
+
+                                                                                    firestore.collection(
+                                                                                        "outstanding"
+                                                                                    )
+                                                                                        .document(
+                                                                                            docId
+                                                                                        )
+                                                                                        .update(
+                                                                                            updateData
+                                                                                        )
+                                                                                        .addOnSuccessListener {
+                                                                                            // 🔹 Kirim notifikasi email via Apps Script (Revisi)
+                                                                                            val urlRevisi =
+                                                                                                "https://script.google.com/macros/s/AKfycb-revisi/exec"
+                                                                                            val client =
+                                                                                                OkHttpClient()
+                                                                                            val jsonBody =
+                                                                                                JSONObject().apply {
+                                                                                                    put(
+                                                                                                        "kode_alat",
+                                                                                                        kodeAlat
+                                                                                                    )
+                                                                                                    put(
+                                                                                                        "tanggal",
+                                                                                                        checklist["tanggal"]
+                                                                                                    )
+                                                                                                    put(
+                                                                                                        "item",
+                                                                                                        checklist["item"]
+                                                                                                    )
+                                                                                                    put(
+                                                                                                        "keterangan",
+                                                                                                        keteranganPerbaikan.value
+                                                                                                    )
+                                                                                                }
+                                                                                                    .toString()
+
+                                                                                            val body =
+                                                                                                RequestBody.create(
+                                                                                                    "application/json".toMediaType(),
+                                                                                                    jsonBody
+                                                                                                )
+                                                                                            val request =
+                                                                                                Request.Builder()
+                                                                                                    .url(
+                                                                                                        urlRevisi
+                                                                                                    )
+                                                                                                    .post(
+                                                                                                        body
+                                                                                                    )
+                                                                                                    .build()
+
+                                                                                            Thread {
+                                                                                                try {
+                                                                                                    val response =
+                                                                                                        client.newCall(
+                                                                                                            request
+                                                                                                        )
+                                                                                                            .execute()
+                                                                                                    Log.d(
+                                                                                                        "APPS_SCRIPT",
+                                                                                                        "Revisi sukses: ${response.body?.string()}"
+                                                                                                    )
+                                                                                                } catch (e: Exception) {
+                                                                                                    Log.e(
+                                                                                                        "APPS_SCRIPT",
+                                                                                                        "Revisi gagal",
+                                                                                                        e
+                                                                                                    )
+                                                                                                }
+                                                                                            }.start()
+
+                                                                                            keteranganPerbaikan.value =
+                                                                                                ""
+                                                                                            perbaikanFotoUri.value =
+                                                                                                null
+                                                                                            checklistList.clear()
+                                                                                            reloadTrigger.value =
+                                                                                                !reloadTrigger.value
+                                                                                        }
+                                                                                }
+                                                                            }
+                                                                    } else {
+                                                                        Toast.makeText(
+                                                                            context,
+                                                                            "Upload ke Cloudinary gagal",
+                                                                            Toast.LENGTH_SHORT
+                                                                        ).show()
+                                                                    }
+                                                                }
+                                                            },
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = Color(0xFF00695C)
+                                                            )
+                                                        ) {
+                                                            Text("Kirim", color = Color.White)
+                                                        }
+                                                    },
+                                                    dismissButton = {
+                                                        OutlinedButton(onClick = {
+                                                            showPerbaikanDialog.value = false
+                                                            keteranganPerbaikan.value = ""
+                                                            perbaikanFotoUri.value = null
+                                                        }) {
+                                                            Text("Batal")
+                                                        }
+                                                    },
+                                                    title = {
+                                                        Text(
+                                                            "Revisi Perbaikan",
+                                                            style = MaterialTheme.typography.titleLarge
                                                         )
+                                                    },
+                                                    text = {
+                                                        Column {
+                                                            Text("Masukkan keterangan dan unggah foto revisi:")
+                                                            Spacer(modifier = Modifier.height(12.dp))
 
-                                                        Spacer(modifier = Modifier.height(12.dp))
+                                                            OutlinedTextField(
+                                                                value = keteranganPerbaikan.value,
+                                                                onValueChange = {
+                                                                    keteranganPerbaikan.value = it
+                                                                },
+                                                                placeholder = { Text("Contoh: Part tidak sesuai, perlu diganti ulang...") },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
 
-                                                        // ✅ UI Upload Foto
-                                                        if (perbaikanFotoUri.value == null) {
-                                                            Column(
-                                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .clickable { launcher.launch("image/*") }
-                                                                    .padding(16.dp)
-                                                            ) {
-                                                                Icon(
-                                                                    imageVector = Icons.Default.AddCircle,
-                                                                    contentDescription = "Upload",
-                                                                    modifier = Modifier.size(48.dp),
-                                                                    tint = Color.Gray
-                                                                )
-                                                                Text("Ambil atau Pilih Foto", color = Color.Gray)
-                                                            }
-                                                        } else {
-                                                            Box(
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .height(200.dp)
-                                                            ) {
-                                                                AsyncImage(
-                                                                    model = perbaikanFotoUri.value,
-                                                                    contentDescription = null,
+                                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                                            // ✅ UI Upload Foto
+                                                            if (perbaikanFotoUri.value == null) {
+                                                                Column(
+                                                                    horizontalAlignment = Alignment.CenterHorizontally,
                                                                     modifier = Modifier
-                                                                        .matchParentSize()
-                                                                        .clip(RoundedCornerShape(8.dp)),
-                                                                    contentScale = ContentScale.Crop
-                                                                )
-                                                                IconButton(
-                                                                    onClick = { launcher.launch("image/*") },
-                                                                    modifier = Modifier
-                                                                        .align(Alignment.TopEnd)
-                                                                        .padding(8.dp)
-                                                                        .background(Color.White.copy(alpha = 0.7f), CircleShape)
+                                                                        .fillMaxWidth()
+                                                                        .clickable {
+                                                                            launcher.launch(
+                                                                                "image/*"
+                                                                            )
+                                                                        }
+                                                                        .padding(16.dp)
                                                                 ) {
                                                                     Icon(
-                                                                        imageVector = Icons.Default.Edit,
-                                                                        contentDescription = "Edit Foto",
-                                                                        tint = Color.Black
+                                                                        imageVector = Icons.Default.AddCircle,
+                                                                        contentDescription = "Upload",
+                                                                        modifier = Modifier.size(48.dp),
+                                                                        tint = Color.Gray
                                                                     )
+                                                                    Text(
+                                                                        "Ambil atau Pilih Foto",
+                                                                        color = Color.Gray
+                                                                    )
+                                                                }
+                                                            } else {
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .height(200.dp)
+                                                                ) {
+                                                                    AsyncImage(
+                                                                        model = perbaikanFotoUri.value,
+                                                                        contentDescription = null,
+                                                                        modifier = Modifier
+                                                                            .matchParentSize()
+                                                                            .clip(
+                                                                                RoundedCornerShape(
+                                                                                    8.dp
+                                                                                )
+                                                                            ),
+                                                                        contentScale = ContentScale.Crop
+                                                                    )
+                                                                    IconButton(
+                                                                        onClick = {
+                                                                            launcher.launch(
+                                                                                "image/*"
+                                                                            )
+                                                                        },
+                                                                        modifier = Modifier
+                                                                            .align(Alignment.TopEnd)
+                                                                            .padding(8.dp)
+                                                                            .background(
+                                                                                Color.White.copy(
+                                                                                    alpha = 0.7f
+                                                                                ), CircleShape
+                                                                            )
+                                                                    ) {
+                                                                        Icon(
+                                                                            imageVector = Icons.Default.Edit,
+                                                                            contentDescription = "Edit Foto",
+                                                                            tint = Color.Black
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
                                                         }
                                                     }
-                                                }
-                                            )
-                                        }
-
-                                        Button(
-                                            onClick = {
-                                                val firestore = FirebaseFirestore.getInstance()
-                                                val docRef = firestore.collection("outstanding")
-                                                    .whereEqualTo("kode_alat", kodeAlat)
-                                                    .whereEqualTo("tanggal", checklist["tanggal"])
-                                                    .whereEqualTo("item", checklist["item"])
-                                                    .limit(1)
-
-                                                docRef.get().addOnSuccessListener { result ->
-                                                    if (!result.isEmpty) {
-                                                        val docId = result.documents[0].id
-                                                        val update = mapOf(
-                                                            "status_perbaikan" to "menunggu konfirmasi operator",
-                                                            "konfirmasi_teknik_timestamp" to FieldValue.serverTimestamp()
-                                                        )
-                                                        firestore.collection("outstanding")
-                                                            .document(docId)
-                                                            .update(update)
-                                                            .addOnSuccessListener {
-                                                                // 🔹 Kirim notifikasi email via Apps Script (Konfirmasi)
-                                                                val urlKonfirmasi = "https://script.google.com/macros/s/AKfycbzosv_qLE5gVtqBvk0tBOR-5qQFitBj1hT8d8HQPoRnbp1uJJfypAqej7wjs-EcJWeR/exec"
-                                                                val client = OkHttpClient()
-                                                                val jsonBody = JSONObject().apply {
-                                                                    put("kode_alat", kodeAlat)
-                                                                    put("tanggal", checklist["tanggal"])
-                                                                    put("item", checklist["item"])
-                                                                }.toString()
-
-                                                                val body = RequestBody.create("application/json".toMediaType(), jsonBody)
-                                                                val request = Request.Builder()
-                                                                    .url(urlKonfirmasi)
-                                                                    .post(body)
-                                                                    .build()
-
-                                                                Thread {
-                                                                    try {
-                                                                        val response = client.newCall(request).execute()
-                                                                        Log.d("APPS_SCRIPT", "Konfirmasi sukses: ${response.body?.string()}")
-                                                                    } catch (e: Exception) {
-                                                                        Log.e("APPS_SCRIPT", "Konfirmasi gagal", e)
-                                                                    }
-                                                                }.start()
-
-                                                                checklistList.clear()
-                                                                reloadTrigger.value = !reloadTrigger.value
-                                                            }
-                                                    }
-                                                }
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(
-                                                    0xFF43A047
                                                 )
-                                            ),
-                                            shape = RoundedCornerShape(10.dp),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Konfirmasi Perbaikan", color = Color.White)
+                                            }
+
+                                            Button(
+                                                onClick = {
+                                                    val firestore = FirebaseFirestore.getInstance()
+                                                    val docRef = firestore.collection("outstanding")
+                                                        .whereEqualTo("kode_alat", kodeAlat)
+                                                        .whereEqualTo(
+                                                            "tanggal",
+                                                            checklist["tanggal"]
+                                                        )
+                                                        .whereEqualTo("item", checklist["item"])
+                                                        .limit(1)
+
+                                                    docRef.get().addOnSuccessListener { result ->
+                                                        if (!result.isEmpty) {
+                                                            val docId = result.documents[0].id
+                                                            val update = mapOf(
+                                                                "status_perbaikan" to "menunggu konfirmasi operator",
+                                                                "konfirmasi_teknik_timestamp" to FieldValue.serverTimestamp()
+                                                            )
+                                                            firestore.collection("outstanding")
+                                                                .document(docId)
+                                                                .update(update)
+                                                                .addOnSuccessListener {
+                                                                    // 🔹 Kirim notifikasi email via Apps Script (Konfirmasi)
+                                                                    val urlKonfirmasi =
+                                                                        "https://script.google.com/macros/s/AKfycbzosv_qLE5gVtqBvk0tBOR-5qQFitBj1hT8d8HQPoRnbp1uJJfypAqej7wjs-EcJWeR/exec"
+                                                                    val client = OkHttpClient()
+                                                                    val jsonBody =
+                                                                        JSONObject().apply {
+                                                                            put(
+                                                                                "kode_alat",
+                                                                                kodeAlat
+                                                                            )
+                                                                            put(
+                                                                                "tanggal",
+                                                                                checklist["tanggal"]
+                                                                            )
+                                                                            put(
+                                                                                "item",
+                                                                                checklist["item"]
+                                                                            )
+                                                                        }.toString()
+
+                                                                    val body = RequestBody.create(
+                                                                        "application/json".toMediaType(),
+                                                                        jsonBody
+                                                                    )
+                                                                    val request = Request.Builder()
+                                                                        .url(urlKonfirmasi)
+                                                                        .post(body)
+                                                                        .build()
+
+                                                                    Thread {
+                                                                        try {
+                                                                            val response =
+                                                                                client.newCall(
+                                                                                    request
+                                                                                ).execute()
+                                                                            Log.d(
+                                                                                "APPS_SCRIPT",
+                                                                                "Konfirmasi sukses: ${response.body?.string()}"
+                                                                            )
+                                                                        } catch (e: Exception) {
+                                                                            Log.e(
+                                                                                "APPS_SCRIPT",
+                                                                                "Konfirmasi gagal",
+                                                                                e
+                                                                            )
+                                                                        }
+                                                                    }.start()
+
+                                                                    checklistList.clear()
+                                                                    reloadTrigger.value =
+                                                                        !reloadTrigger.value
+                                                                }
+                                                        }
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(
+                                                        0xFF43A047
+                                                    )
+                                                ),
+                                                shape = RoundedCornerShape(10.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Konfirmasi Perbaikan", color = Color.White)
+                                            }
                                         }
                                     }
 
@@ -1913,207 +2115,352 @@ class OutstandingActivity : ComponentActivity() {
 //                                                }
 //                                            )
 //                                        }
-                                        Button(
-                                            onClick = { showDialog.value = true  },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF003366),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Perbaikan Ulang Selesai")
-                                        }
+                                        if (jabatanUser.value == "PT BIMA") {
+                                            Button(
+                                                onClick = { showDialog.value = true },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF003366),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Perbaikan Ulang Selesai")
+                                            }
 
-                                        val isSubmitting = remember { mutableStateOf(false) }
-                                        if (isSubmitting.value) {
-                                            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                                        }
+                                            val isSubmitting = remember { mutableStateOf(false) }
+                                            if (isSubmitting.value) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.align(
+                                                        Alignment.CenterHorizontally
+                                                    )
+                                                )
+                                            }
 
-                                        if (showDialog.value) {
-                                            AlertDialog(
-                                                onDismissRequest = {
-                                                    showDialog.value = false
-                                                    perbaikanKeterangan.clear()
-                                                    perbaikanKeterangan.add("") // reset ke 1 input kosong
-                                                    perbaikanFotoUri.value = null
-                                                },
-                                                confirmButton = {
-                                                    TextButton(
-                                                        onClick = {
-                                                            showDialog.value = false
-                                                            isSubmitting.value = true
-
-                                                            val firestore = FirebaseFirestore.getInstance()
-                                                            val docRef = firestore.collection("outstanding")
-                                                                .whereEqualTo("kode_alat", kodeAlat)
-                                                                .whereEqualTo("tanggal", checklist["tanggal"])
-                                                                .whereEqualTo("item", checklist["item"])
-                                                                .limit(1)
-
-                                                            docRef.get().addOnSuccessListener { result ->
-                                                                if (!result.isEmpty) {
-                                                                    val doc = result.documents[0]
-                                                                    val docId = doc.id
-                                                                    fun updateFirestore(imageUrl: String?) {
-                                                                        val index = getNextPerbaikanRevisionIndex(doc.data ?: emptyMap())
-                                                                        val nextFieldImage = "gambar_perbaikan_$index"
-                                                                        val nextFieldText = "keterangan_perbaikan_$index"
-                                                                        val nextFieldTimestamp = "keterangan_perbaikan_${index}_timestamp"
-
-                                                                        val updateData = mutableMapOf<String, Any>(
-                                                                            nextFieldText to perbaikanKeterangan.filter { it.isNotBlank() },
-                                                                            "status_perbaikan" to "menunggu konfirmasi teknik",
-                                                                            nextFieldTimestamp to FieldValue.serverTimestamp()
-                                                                        )
-
-                                                                        imageUrl?.let {
-                                                                            updateData[nextFieldImage] = it
-                                                                        }
-
-                                                                        Log.d("UpdateFirestore", "Data yang dikirim: $updateData")
-
-                                                                        firestore.collection("outstanding").document(docId).update(updateData)
-                                                                            .addOnSuccessListener {
-                                                                                Log.d("UpdateFirestore", "Dokumen berhasil diupdate.")
-                                                                                perbaikanKeterangan.clear()
-                                                                                perbaikanKeterangan.add("")
-                                                                                perbaikanFotoUri.value = null
-                                                                                checklistList.clear()
-                                                                                reloadTrigger.value = !reloadTrigger.value
-                                                                            }
-                                                                            .addOnFailureListener {
-                                                                                Log.e("UpdateFirestore", "Gagal update dokumen: ${it.message}")
-                                                                            }
-
-                                                                        val json = JSONObject().apply {
-                                                                            put("kode_alat", kodeAlat)
-                                                                            put("tanggal", checklist["tanggal"])
-                                                                            put("item", checklist["item"])
-                                                                            put("keterangan_perbaikan_0", perbaikanKeterangan.joinToString(" | "))
-                                                                            put("gambar_perbaikan_0", imageUrl ?: "")
-                                                                            put("operator_email", doc.getString("operator_email") ?: "")
-                                                                        }
-
-                                                                        val client = OkHttpClient()
-                                                                        val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json.toString())
-                                                                        val request = Request.Builder()
-                                                                            .url("https://script.google.com/macros/s/AKfycbyi75C-IWENqNu6B7EB2i1iAca5PDd9eToVrG7y-lypozfvo-u5natJafUN8it_H5SR6Q/exec")
-                                                                            .post(requestBody)
-                                                                            .build()
-
-                                                                        client.newCall(request).enqueue(object : Callback {
-                                                                            override fun onFailure(call: Call, e: IOException) {
-                                                                                Log.e("EmailNotif", "Gagal kirim email", e)
-                                                                                isSubmitting.value = false
-                                                                            }
-
-                                                                            override fun onResponse(call: Call, response: Response) {
-                                                                                Log.d("EmailNotif", "Email berhasil dikirim: ${response.body?.string()}")
-                                                                                isSubmitting.value = false
-                                                                            }
-                                                                        })
-                                                                    }
-
-                                                                    val uri = perbaikanFotoUri.value
-                                                                    if (uri != null) {
-                                                                        val bitmap = uriToBitmap(this@OutstandingActivity, uri)
-                                                                        if (bitmap != null) {
-                                                                            uploadImageToCloudinary(bitmap) { imageUrl ->
-                                                                                if (imageUrl != null) {
-                                                                                    updateFirestore(imageUrl)
-                                                                                } else {
-                                                                                    Log.e("CloudinaryUpload", "Upload gagal, URL null")
-                                                                                    updateFirestore(null)
-                                                                                }
-                                                                            }
-                                                                        } else {
-                                                                            Log.e("CloudinaryUpload", "Gagal konversi URI ke Bitmap")
-                                                                            updateFirestore(null)
-                                                                        }
-                                                                    } else {
-                                                                        updateFirestore(null)
-                                                                    }
-                                                                } else {
-                                                                    isSubmitting.value = false
-                                                                }
-                                                            }
-                                                        }
-                                                    ) {
-                                                        Text("Submit")
-                                                    }
-                                                },
-                                                dismissButton = {
-                                                    TextButton(onClick = {
+                                            if (showDialog.value) {
+                                                AlertDialog(
+                                                    onDismissRequest = {
                                                         showDialog.value = false
                                                         perbaikanKeterangan.clear()
-                                                        perbaikanKeterangan.add("")
+                                                        perbaikanKeterangan.add("") // reset ke 1 input kosong
                                                         perbaikanFotoUri.value = null
-                                                    }) {
-                                                        Text("Batal")
-                                                    }
-                                                },
-                                                text = {
-                                                    Column {
-                                                        Text("Upload foto perbaikan dan isi keterangan:")
+                                                    },
+                                                    confirmButton = {
+                                                        TextButton(
+                                                            onClick = {
+                                                                showDialog.value = false
+                                                                isSubmitting.value = true
 
-                                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                                        Card(
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .height(150.dp)
-                                                                .clickable { imageLauncher.launch("image/*") },
-                                                            shape = RoundedCornerShape(12.dp),
-                                                            border = BorderStroke(1.dp, Color.Gray),
-                                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8))
-                                                        ) {
-                                                            Box(
-                                                                contentAlignment = Alignment.Center,
-                                                                modifier = Modifier.fillMaxSize()
-                                                            ) {
-                                                                if (perbaikanFotoUri.value != null) {
-                                                                    AsyncImage(
-                                                                        model = perbaikanFotoUri.value,
-                                                                        contentDescription = "Foto terpilih",
-                                                                        contentScale = ContentScale.Crop,
-                                                                        modifier = Modifier.fillMaxSize()
-                                                                    )
-                                                                } else {
-                                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                                        Icon(
-                                                                            imageVector = Icons.Default.CameraAlt,
-                                                                            contentDescription = "Upload Foto",
-                                                                            tint = Color.Gray,
-                                                                            modifier = Modifier.size(40.dp)
+                                                                val firestore =
+                                                                    FirebaseFirestore.getInstance()
+                                                                val docRef =
+                                                                    firestore.collection("outstanding")
+                                                                        .whereEqualTo(
+                                                                            "kode_alat",
+                                                                            kodeAlat
                                                                         )
-                                                                        Spacer(modifier = Modifier.height(8.dp))
-                                                                        Text("Klik untuk pilih foto", color = Color.Gray)
+                                                                        .whereEqualTo(
+                                                                            "tanggal",
+                                                                            checklist["tanggal"]
+                                                                        )
+                                                                        .whereEqualTo(
+                                                                            "item",
+                                                                            checklist["item"]
+                                                                        )
+                                                                        .limit(1)
+
+                                                                docRef.get()
+                                                                    .addOnSuccessListener { result ->
+                                                                        if (!result.isEmpty) {
+                                                                            val doc =
+                                                                                result.documents[0]
+                                                                            val docId = doc.id
+                                                                            fun updateFirestore(
+                                                                                imageUrl: String?
+                                                                            ) {
+                                                                                val index =
+                                                                                    getNextPerbaikanRevisionIndex(
+                                                                                        doc.data
+                                                                                            ?: emptyMap()
+                                                                                    )
+                                                                                val nextFieldImage =
+                                                                                    "gambar_perbaikan_$index"
+                                                                                val nextFieldText =
+                                                                                    "keterangan_perbaikan_$index"
+                                                                                val nextFieldTimestamp =
+                                                                                    "keterangan_perbaikan_${index}_timestamp"
+
+                                                                                val updateData =
+                                                                                    mutableMapOf<String, Any>(
+                                                                                        nextFieldText to perbaikanKeterangan.filter { it.isNotBlank() },
+                                                                                        "status_perbaikan" to "menunggu konfirmasi teknik",
+                                                                                        nextFieldTimestamp to FieldValue.serverTimestamp()
+                                                                                    )
+
+                                                                                imageUrl?.let {
+                                                                                    updateData[nextFieldImage] =
+                                                                                        it
+                                                                                }
+
+                                                                                Log.d(
+                                                                                    "UpdateFirestore",
+                                                                                    "Data yang dikirim: $updateData"
+                                                                                )
+
+                                                                                firestore.collection(
+                                                                                    "outstanding"
+                                                                                ).document(docId)
+                                                                                    .update(
+                                                                                        updateData
+                                                                                    )
+                                                                                    .addOnSuccessListener {
+                                                                                        Log.d(
+                                                                                            "UpdateFirestore",
+                                                                                            "Dokumen berhasil diupdate."
+                                                                                        )
+                                                                                        perbaikanKeterangan.clear()
+                                                                                        perbaikanKeterangan.add(
+                                                                                            ""
+                                                                                        )
+                                                                                        perbaikanFotoUri.value =
+                                                                                            null
+                                                                                        checklistList.clear()
+                                                                                        reloadTrigger.value =
+                                                                                            !reloadTrigger.value
+                                                                                    }
+                                                                                    .addOnFailureListener {
+                                                                                        Log.e(
+                                                                                            "UpdateFirestore",
+                                                                                            "Gagal update dokumen: ${it.message}"
+                                                                                        )
+                                                                                    }
+
+                                                                                val json =
+                                                                                    JSONObject().apply {
+                                                                                        put(
+                                                                                            "kode_alat",
+                                                                                            kodeAlat
+                                                                                        )
+                                                                                        put(
+                                                                                            "tanggal",
+                                                                                            checklist["tanggal"]
+                                                                                        )
+                                                                                        put(
+                                                                                            "item",
+                                                                                            checklist["item"]
+                                                                                        )
+                                                                                        put(
+                                                                                            "keterangan_perbaikan_0",
+                                                                                            perbaikanKeterangan.joinToString(
+                                                                                                " | "
+                                                                                            )
+                                                                                        )
+                                                                                        put(
+                                                                                            "gambar_perbaikan_0",
+                                                                                            imageUrl
+                                                                                                ?: ""
+                                                                                        )
+                                                                                        put(
+                                                                                            "operator_email",
+                                                                                            doc.getString(
+                                                                                                "operator_email"
+                                                                                            ) ?: ""
+                                                                                        )
+                                                                                    }
+
+                                                                                val client =
+                                                                                    OkHttpClient()
+                                                                                val requestBody =
+                                                                                    RequestBody.create(
+                                                                                        "application/json".toMediaTypeOrNull(),
+                                                                                        json.toString()
+                                                                                    )
+                                                                                val request =
+                                                                                    Request.Builder()
+                                                                                        .url("https://script.google.com/macros/s/AKfycbyi75C-IWENqNu6B7EB2i1iAca5PDd9eToVrG7y-lypozfvo-u5natJafUN8it_H5SR6Q/exec")
+                                                                                        .post(
+                                                                                            requestBody
+                                                                                        )
+                                                                                        .build()
+
+                                                                                client.newCall(
+                                                                                    request
+                                                                                ).enqueue(object :
+                                                                                    Callback {
+                                                                                    override fun onFailure(
+                                                                                        call: Call,
+                                                                                        e: IOException
+                                                                                    ) {
+                                                                                        Log.e(
+                                                                                            "EmailNotif",
+                                                                                            "Gagal kirim email",
+                                                                                            e
+                                                                                        )
+                                                                                        isSubmitting.value =
+                                                                                            false
+                                                                                    }
+
+                                                                                    override fun onResponse(
+                                                                                        call: Call,
+                                                                                        response: Response
+                                                                                    ) {
+                                                                                        Log.d(
+                                                                                            "EmailNotif",
+                                                                                            "Email berhasil dikirim: ${response.body?.string()}"
+                                                                                        )
+                                                                                        isSubmitting.value =
+                                                                                            false
+                                                                                    }
+                                                                                })
+                                                                            }
+
+                                                                            val uri =
+                                                                                perbaikanFotoUri.value
+                                                                            if (uri != null) {
+                                                                                val bitmap =
+                                                                                    uriToBitmap(
+                                                                                        this@OutstandingActivity,
+                                                                                        uri
+                                                                                    )
+                                                                                if (bitmap != null) {
+                                                                                    uploadImageToCloudinary(
+                                                                                        bitmap
+                                                                                    ) { imageUrl ->
+                                                                                        if (imageUrl != null) {
+                                                                                            updateFirestore(
+                                                                                                imageUrl
+                                                                                            )
+                                                                                        } else {
+                                                                                            Log.e(
+                                                                                                "CloudinaryUpload",
+                                                                                                "Upload gagal, URL null"
+                                                                                            )
+                                                                                            updateFirestore(
+                                                                                                null
+                                                                                            )
+                                                                                        }
+                                                                                    }
+                                                                                } else {
+                                                                                    Log.e(
+                                                                                        "CloudinaryUpload",
+                                                                                        "Gagal konversi URI ke Bitmap"
+                                                                                    )
+                                                                                    updateFirestore(
+                                                                                        null
+                                                                                    )
+                                                                                }
+                                                                            } else {
+                                                                                updateFirestore(null)
+                                                                            }
+                                                                        } else {
+                                                                            isSubmitting.value =
+                                                                                false
+                                                                        }
+                                                                    }
+                                                            }
+                                                        ) {
+                                                            Text("Submit")
+                                                        }
+                                                    },
+                                                    dismissButton = {
+                                                        TextButton(onClick = {
+                                                            showDialog.value = false
+                                                            perbaikanKeterangan.clear()
+                                                            perbaikanKeterangan.add("")
+                                                            perbaikanFotoUri.value = null
+                                                        }) {
+                                                            Text("Batal")
+                                                        }
+                                                    },
+                                                    text = {
+                                                        Column {
+                                                            Text("Upload foto perbaikan dan isi keterangan:")
+
+                                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                                            Card(
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .height(150.dp)
+                                                                    .clickable {
+                                                                        imageLauncher.launch(
+                                                                            "image/*"
+                                                                        )
+                                                                    },
+                                                                shape = RoundedCornerShape(12.dp),
+                                                                border = BorderStroke(
+                                                                    1.dp,
+                                                                    Color.Gray
+                                                                ),
+                                                                colors = CardDefaults.cardColors(
+                                                                    containerColor = Color(
+                                                                        0xFFF8F8F8
+                                                                    )
+                                                                )
+                                                            ) {
+                                                                Box(
+                                                                    contentAlignment = Alignment.Center,
+                                                                    modifier = Modifier.fillMaxSize()
+                                                                ) {
+                                                                    if (perbaikanFotoUri.value != null) {
+                                                                        AsyncImage(
+                                                                            model = perbaikanFotoUri.value,
+                                                                            contentDescription = "Foto terpilih",
+                                                                            contentScale = ContentScale.Crop,
+                                                                            modifier = Modifier.fillMaxSize()
+                                                                        )
+                                                                    } else {
+                                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.CameraAlt,
+                                                                                contentDescription = "Upload Foto",
+                                                                                tint = Color.Gray,
+                                                                                modifier = Modifier.size(
+                                                                                    40.dp
+                                                                                )
+                                                                            )
+                                                                            Spacer(
+                                                                                modifier = Modifier.height(
+                                                                                    8.dp
+                                                                                )
+                                                                            )
+                                                                            Text(
+                                                                                "Klik untuk pilih foto",
+                                                                                color = Color.Gray
+                                                                            )
+                                                                        }
                                                                     }
                                                                 }
                                                             }
-                                                        }
 
-                                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                                        // Loop semua input keterangan
-                                                        perbaikanKeterangan.forEachIndexed { index, value ->
-                                                            OutlinedTextField(
-                                                                value = value,
-                                                                onValueChange = { newValue -> perbaikanKeterangan[index] = newValue },
-                                                                placeholder = { Text("Masukkan keterangan perbaikan...") },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                            )
                                                             Spacer(modifier = Modifier.height(8.dp))
-                                                        }
 
-                                                        // Tombol tambah keterangan baru
-                                                        TextButton(onClick = { perbaikanKeterangan.add("") }) {
-                                                            Text("+ Tambah Keterangan")
+                                                            // Loop semua input keterangan
+                                                            perbaikanKeterangan.forEachIndexed { index, value ->
+                                                                OutlinedTextField(
+                                                                    value = value,
+                                                                    onValueChange = { newValue ->
+                                                                        perbaikanKeterangan[index] =
+                                                                            newValue
+                                                                    },
+                                                                    placeholder = { Text("Masukkan keterangan perbaikan...") },
+                                                                    modifier = Modifier.fillMaxWidth()
+                                                                )
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                            }
+
+                                                            // Tombol tambah keterangan baru
+                                                            TextButton(onClick = {
+                                                                perbaikanKeterangan.add(
+                                                                    ""
+                                                                )
+                                                            }) {
+                                                                Text("+ Tambah Keterangan")
+                                                            }
                                                         }
                                                     }
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                     }
                                 }
