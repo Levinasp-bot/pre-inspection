@@ -218,7 +218,7 @@ fun PreInspectionScreen(onNext: (String, String, String, String) -> Unit) {
                 OutlinedTextField(
                     value = namaKapal,
                     onValueChange = { namaKapal = it },
-                    label = { Text("Nama Kapal (Opsional)") },
+                    label = { Text("Nama Kapal") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = darkBlue,
@@ -234,8 +234,8 @@ fun PreInspectionScreen(onNext: (String, String, String, String) -> Unit) {
                 // 🔘 Tombol Selanjutnya
                 Button(
                     onClick = {
-                        if (selectedDate.isEmpty() || selectedShift.isEmpty() || selectedAlat.isEmpty()) {
-                            Toast.makeText(context, "Lengkapi semua field!", Toast.LENGTH_SHORT).show()
+                        if (selectedDate.isEmpty() || selectedShift.isEmpty() || selectedAlat.isEmpty() || namaKapal.isEmpty()) {
+                            Toast.makeText(context, "Lengkapi semua field termasuk Nama Kapal!", Toast.LENGTH_SHORT).show()
                         } else {
                             onNext(selectedDate, selectedShift, selectedAlat, namaKapal)
                         }

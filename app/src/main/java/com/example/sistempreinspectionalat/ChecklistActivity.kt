@@ -55,7 +55,6 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
-import okhttp3.MediaType.Companion.toMediaType
 
 class ChecklistActivity : ComponentActivity() {
     private val cloudinaryUrl = "https://api.cloudinary.com/v1_1/dutgwdhss/image/upload"
@@ -67,7 +66,6 @@ class ChecklistActivity : ComponentActivity() {
         val kodeAlat = intent.getStringExtra("kode_alat") ?: ""
         val tanggal = intent.getStringExtra("tanggal") ?: ""
         val shift = intent.getStringExtra("shift") ?: ""
-
 
         setContent {
             SistemPreinspectionAlatTheme {
@@ -98,7 +96,7 @@ class ChecklistActivity : ComponentActivity() {
 //      val statusAlat = remember { mutableStateOf("READY FOR USE") }
         val kondisiTidakNormalSet = setOf(
             "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
-            "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
+            "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR"
         )
 
         val itemTidakNormal = checklistItems.filter {
@@ -524,12 +522,12 @@ class ChecklistActivity : ComponentActivity() {
 
         val kondisiTidakNormalSet = setOf(
             "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
-            "TIDAK BERFUNGSI", "TIDAK NYALA", "KOTOR"
+            "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR"
         )
 
         val radioOptions = when {
             item.contains("oli", ignoreCase = true) -> listOf("YA", "TIDAK")
-            item.contains("lampu", ignoreCase = true) -> listOf("NYALA", "TIDAK NYALA")
+            item.contains("lampu", ignoreCase = true) -> listOf("MENYALA", "TIDAK MENYALA")
             item.contains("ban", ignoreCase = true) -> listOf("YA", "TIDAK")
             item.contains("tangga", ignoreCase = true) -> listOf("RUSAK", "TIDAK")
             item.contains("area kabin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")

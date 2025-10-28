@@ -100,6 +100,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.firestore.FieldValue
 import android.os.Handler
 import android.os.Looper
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -148,6 +149,21 @@ class OutstandingActivity : ComponentActivity() {
         val urlKonfirmasi = "https://script.google.com/macros/s/AKfycby-5zu0Nbvnb8-aJAVYxVkj_zyZjcNTkilPdhNf7r3WeTLF-DYYAeX6ZQVLn5uFsZAp/exec"
 
         val client = OkHttpClient()
+
+        val jabatanUser = remember { mutableStateOf("") }
+
+        LaunchedEffect(Unit) {
+            val auth = FirebaseAuth.getInstance()
+            val currentUser = auth.currentUser
+            if (currentUser != null) {
+                FirebaseFirestore.getInstance().collection("users")
+                    .document(currentUser.uid)
+                    .get()
+                    .addOnSuccessListener { document ->
+                        jabatanUser.value = document.getString("jabatan") ?: ""
+                    }
+            }
+        }
 
         LaunchedEffect(reloadTrigger.value) {
             val firestore = FirebaseFirestore.getInstance()
@@ -358,19 +374,6 @@ class OutstandingActivity : ComponentActivity() {
                                         val sparepartJam = remember { mutableStateOf("") }
                                         val sparepartMenit = remember { mutableStateOf("") }
 
-//                                        OutlinedButton(
-//                                            onClick = { showImage.value = true },
-//                                            shape = RoundedCornerShape(10.dp),
-//                                            colors = ButtonDefaults.outlinedButtonColors(
-//                                                containerColor = Color.White,
-//                                                contentColor = Color(0xFF003366)
-//                                            ),
-//                                            border = BorderStroke(1.dp, Color(0xFF003366)),
-//                                            modifier = Modifier.fillMaxWidth()
-//                                        ) {
-//                                            Text("Lihat Foto")
-//                                        }
-
                                         if (showImage.value) {
                                             AlertDialog(
                                                 onDismissRequest = { showImage.value = false },
@@ -394,297 +397,358 @@ class OutstandingActivity : ComponentActivity() {
                                             )
                                         }
 
-                                        Button(
-                                            onClick = { showDialogBima.value = true },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF003366),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Beri Tanggapan")
-                                        }
+                                        if (jabatanUser.value == "PT BIMA") {
 
-                                        if (isSubmitting.value) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.align(
-                                                    Alignment.CenterHorizontally
+                                            Button(
+                                                onClick = { showDialogBima.value = true },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF003366),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Beri Tanggapan")
+                                            }
+
+                                            if (isSubmitting.value) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.align(Alignment.CenterHorizontally)
                                                 )
-                                            )
-                                        }
-                                        if (showDialogBima.value) {
-                                            AlertDialog(
-                                                modifier = Modifier.fillMaxWidth(0.95f),
-                                                onDismissRequest = {
-                                                    showDialogBima.value = false
-                                                    tanggapanList.clear()
-                                                    tanggapanList.add("") // reset ke satu input kosong
-                                                    estimasiHari.value = ""
-                                                    estimasiJam.value = ""
-                                                    estimasiMenit.value = ""
-                                                    selectedSparepartStatus.value = ""
-                                                    sparepartHari.value = ""
-                                                    sparepartJam.value = ""
-                                                    sparepartMenit.value = ""
-                                                },
-                                                title = {
-                                                    Text(
-                                                        "Tanggapan Perbaikan",
-                                                        style = MaterialTheme.typography.titleLarge
-                                                    )
-                                                },
-                                                text = {
-                                                    Column(
-                                                        modifier = Modifier.verticalScroll(
-                                                            rememberScrollState()
+                                            }
+                                            if (showDialogBima.value) {
+                                                AlertDialog(
+                                                    modifier = Modifier.fillMaxWidth(0.95f),
+                                                    onDismissRequest = {
+                                                        showDialogBima.value = false
+                                                        tanggapanList.clear()
+                                                        tanggapanList.add("") // reset ke satu input kosong
+                                                        estimasiHari.value = ""
+                                                        estimasiJam.value = ""
+                                                        estimasiMenit.value = ""
+                                                        selectedSparepartStatus.value = ""
+                                                        sparepartHari.value = ""
+                                                        sparepartJam.value = ""
+                                                        sparepartMenit.value = ""
+                                                    },
+                                                    title = {
+                                                        Text(
+                                                            "Tanggapan Perbaikan",
+                                                            style = MaterialTheme.typography.titleLarge
                                                         )
-                                                    ) {
-                                                        Text("Silakan masukkan tanggapan Anda.")
-                                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                                        // List input tanggapan
-                                                        tanggapanList.forEachIndexed { index, value ->
-                                                            OutlinedTextField(
-                                                                value = value,
-                                                                onValueChange = { newValue ->
-                                                                    tanggapanList[index] = newValue
-                                                                },
-                                                                placeholder = { Text("Masukkan tanggapan...") },
-                                                                modifier = Modifier.fillMaxWidth()
+                                                    },
+                                                    text = {
+                                                        Column(
+                                                            modifier = Modifier.verticalScroll(
+                                                                rememberScrollState()
                                                             )
-                                                            Spacer(modifier = Modifier.height(8.dp))
-                                                        }
-
-                                                        // Tombol tambah input baru
-                                                        TextButton(onClick = { tanggapanList.add("") }) {
-                                                            Text("+ Tambah Tanggapan")
-                                                        }
-
-                                                        Spacer(modifier = Modifier.height(12.dp))
-                                                        Text("Estimasi Waktu Pengerjaan:")
-                                                        Row(
-                                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                                            modifier = Modifier.fillMaxWidth()
                                                         ) {
-                                                            OutlinedTextField(
-                                                                value = estimasiHari.value,
-                                                                onValueChange = {
-                                                                    estimasiHari.value = it
-                                                                },
-                                                                label = { Text("Hari") },
-                                                                modifier = Modifier.weight(1f)
-                                                            )
-                                                            Spacer(modifier = Modifier.width(8.dp))
-                                                            OutlinedTextField(
-                                                                value = estimasiJam.value,
-                                                                onValueChange = {
-                                                                    estimasiJam.value = it
-                                                                },
-                                                                label = { Text("Jam") },
-                                                                modifier = Modifier.weight(1f)
-                                                            )
-                                                            Spacer(modifier = Modifier.width(8.dp))
-                                                            OutlinedTextField(
-                                                                value = estimasiMenit.value,
-                                                                onValueChange = {
-                                                                    estimasiMenit.value = it
-                                                                },
-                                                                label = { Text("Menit") },
-                                                                modifier = Modifier.weight(1f)
-                                                            )
-                                                        }
-
-                                                        Spacer(modifier = Modifier.height(12.dp))
-                                                        Text("Apakah perlu indent sparepart?")
-                                                        val options = listOf("Indent", "Tidak")
-                                                        options.forEach { option ->
-                                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                                RadioButton(
-                                                                    selected = selectedSparepartStatus.value == option,
-                                                                    onClick = {
-                                                                        selectedSparepartStatus.value =
-                                                                            option
-                                                                    }
-                                                                )
-                                                                Text(option)
-                                                            }
-                                                        }
-
-                                                        if (selectedSparepartStatus.value == "Indent") {
+                                                            Text("Silakan masukkan tanggapan Anda.")
                                                             Spacer(modifier = Modifier.height(12.dp))
-                                                            Text("Estimasi Waktu Pengadaan Sparepart:")
+
+                                                            // List input tanggapan
+                                                            tanggapanList.forEachIndexed { index, value ->
+                                                                OutlinedTextField(
+                                                                    value = value,
+                                                                    onValueChange = { newValue ->
+                                                                        tanggapanList[index] =
+                                                                            newValue
+                                                                    },
+                                                                    placeholder = { Text("Masukkan tanggapan...") },
+                                                                    modifier = Modifier.fillMaxWidth()
+                                                                )
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                            }
+
+                                                            // Tombol tambah input baru
+                                                            TextButton(onClick = {
+                                                                tanggapanList.add(
+                                                                    ""
+                                                                )
+                                                            }) {
+                                                                Text("+ Tambah Tanggapan")
+                                                            }
+
+                                                            Spacer(modifier = Modifier.height(12.dp))
+                                                            Text("Estimasi Waktu Pengerjaan:")
                                                             Row(
                                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                                 modifier = Modifier.fillMaxWidth()
                                                             ) {
                                                                 OutlinedTextField(
-                                                                    value = sparepartHari.value,
+                                                                    value = estimasiHari.value,
                                                                     onValueChange = {
-                                                                        sparepartHari.value = it
+                                                                        estimasiHari.value = it
                                                                     },
                                                                     label = { Text("Hari") },
                                                                     modifier = Modifier.weight(1f)
                                                                 )
                                                                 Spacer(modifier = Modifier.width(8.dp))
                                                                 OutlinedTextField(
-                                                                    value = sparepartJam.value,
+                                                                    value = estimasiJam.value,
                                                                     onValueChange = {
-                                                                        sparepartJam.value = it
+                                                                        estimasiJam.value = it
                                                                     },
                                                                     label = { Text("Jam") },
                                                                     modifier = Modifier.weight(1f)
                                                                 )
                                                                 Spacer(modifier = Modifier.width(8.dp))
                                                                 OutlinedTextField(
-                                                                    value = sparepartMenit.value,
+                                                                    value = estimasiMenit.value,
                                                                     onValueChange = {
-                                                                        sparepartMenit.value = it
+                                                                        estimasiMenit.value = it
                                                                     },
                                                                     label = { Text("Menit") },
                                                                     modifier = Modifier.weight(1f)
                                                                 )
                                                             }
-                                                        }
-                                                    }
-                                                },
-                                                confirmButton = {
-                                                    Button(
-                                                        onClick = {
-                                                            showDialogBima.value = false
-                                                            isSubmitting.value = true
 
-                                                            val firestore =
-                                                                FirebaseFirestore.getInstance()
-                                                            val docRef =
-                                                                firestore.collection("outstanding")
-                                                                    .whereEqualTo(
-                                                                        "kode_alat",
-                                                                        kodeAlat
-                                                                    )
-                                                                    .whereEqualTo(
-                                                                        "tanggal",
-                                                                        checklist["tanggal"]
-                                                                    )
-                                                                    .whereEqualTo(
-                                                                        "item",
-                                                                        checklist["item"]
-                                                                    )
-                                                                    .limit(1)
-
-                                                            docRef.get()
-                                                                .addOnSuccessListener { result ->
-                                                                    if (!result.isEmpty) {
-                                                                        val doc =
-                                                                            result.documents[0]
-                                                                        val docId = doc.id
-
-                                                                        // Cari index terakhir dari field tanggapan_bima_x (exclude timestamp)
-                                                                        val existingKeys = doc.data?.keys?.filter {
-                                                                            it.startsWith("tanggapan_bima_") && !it.contains("timestamp")
-                                                                        } ?: emptyList()
-
-                                                                        val lastIndex = existingKeys.mapNotNull {
-                                                                            it.removePrefix("tanggapan_bima_").toIntOrNull()
-                                                                        }.maxOrNull() ?: 0
-
-                                                                        val nextIndex = lastIndex + 1
-                                                                        val fieldName = "tanggapan_bima_$nextIndex"
-                                                                        val tsFieldName = "tanggapan_bima_timestamp_$nextIndex"
-
-                                                                        val updateData = mutableMapOf<String, Any>(
-                                                                            fieldName to tanggapanList.filter { it.isNotBlank() },
-                                                                            tsFieldName to FieldValue.serverTimestamp(),
-                                                                            "estimasi_hari_$nextIndex" to estimasiHari.value,
-                                                                            "estimasi_jam_$nextIndex" to estimasiJam.value,
-                                                                            "estimasi_menit_$nextIndex" to estimasiMenit.value,
-                                                                            "status_sparepart_$nextIndex" to selectedSparepartStatus.value,
-                                                                            "status_perbaikan" to "menunggu tanggapan teknik",
-                                                                            "status" to "READY FOR USE"
-                                                                        )
-
-                                                                        if (selectedSparepartStatus.value == "Indent") {
-                                                                            updateData["sparepart_estimasi_hari_$nextIndex"] = sparepartHari.value
-                                                                            updateData["sparepart_estimasi_jam_$nextIndex"] = sparepartJam.value
-                                                                            updateData["sparepart_estimasi_menit_$nextIndex"] = sparepartMenit.value
+                                                            Spacer(modifier = Modifier.height(12.dp))
+                                                            Text("Apakah perlu indent sparepart?")
+                                                            val options = listOf("Indent", "Tidak")
+                                                            options.forEach { option ->
+                                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                    RadioButton(
+                                                                        selected = selectedSparepartStatus.value == option,
+                                                                        onClick = {
+                                                                            selectedSparepartStatus.value =
+                                                                                option
                                                                         }
-
-                                                                        firestore.collection("outstanding")
-                                                                            .document(docId)
-                                                                            .update(updateData)
-                                                                            .addOnSuccessListener {
-                                                                                tanggapanList.clear()
-                                                                                tanggapanList.add("")
-                                                                                isSubmitting.value =
-                                                                                    false
-                                                                                reloadTrigger.value =
-                                                                                    !reloadTrigger.value
-                                                                            }
-                                                                            .addOnFailureListener {
-                                                                                isSubmitting.value =
-                                                                                    false
-                                                                            }
-
-                                                                        val url = "https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec"
-
-                                                                        val data = mapOf(
-                                                                            "kode_alat" to kodeAlat,
-                                                                            "tanggal" to (checklist["tanggal"] ?: ""),
-                                                                            "item" to (checklist["item"] ?: ""),
-                                                                            "tanggapan" to tanggapanList,
-                                                                            "estimasi_hari" to estimasiHari.value,
-                                                                            "estimasi_jam" to estimasiJam.value,
-                                                                            "estimasi_menit" to estimasiMenit.value,
-                                                                            "status_sparepart" to selectedSparepartStatus.value
-                                                                        )
-
-                                                                        val jsonData = JSONObject(data).toString()
-
-                                                                        val client = OkHttpClient()
-                                                                        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                                                                        val body = jsonData.toRequestBody(mediaType)
-
-                                                                        val request = Request.Builder()
-                                                                            .url(url)
-                                                                            .post(body)
-                                                                            .build()
-
-                                                                        CoroutineScope(Dispatchers.IO).launch {
-                                                                            try {
-                                                                                client.newCall(request).execute().use { response ->
-                                                                                    if (!response.isSuccessful) {
-                                                                                        Log.e("GAS", "Error: ${response.code} - ${response.message}")
-                                                                                    } else {
-                                                                                        Log.d("GAS", "Email sent: ${response.body?.string()}")
-                                                                                    }
-                                                                                }
-                                                                            } catch (e: Exception) {
-                                                                                Log.e("GAS", "Exception: ${e.message}")
-                                                                            }
-                                                                        }
-
-                                                                    } else {
-                                                                        isSubmitting.value = false
-                                                                    }
+                                                                    )
+                                                                    Text(option)
                                                                 }
-                                                        },
-                                                        colors = ButtonDefaults.buttonColors(
-                                                            containerColor = Color(0xFF003366), // ✅ Dark Blue
-                                                            contentColor = Color.White
-                                                        )
-                                                    ) {
-                                                        Text("Kirim", color = Color.White)
-                                                    }
-                                                },
-                                                dismissButton = {
-                                                    OutlinedButton(onClick = {
-                                                        showDialogBima.value = false
-                                                    }) {
-                                                        Text("Batal")
-                                                    }
-                                                },
-                                                shape = RoundedCornerShape(0.dp)
-                                            )
+                                                            }
+
+                                                            if (selectedSparepartStatus.value == "Indent") {
+                                                                Spacer(modifier = Modifier.height(12.dp))
+                                                                Text("Estimasi Waktu Pengadaan Sparepart:")
+                                                                Row(
+                                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                                    modifier = Modifier.fillMaxWidth()
+                                                                ) {
+                                                                    OutlinedTextField(
+                                                                        value = sparepartHari.value,
+                                                                        onValueChange = {
+                                                                            sparepartHari.value = it
+                                                                        },
+                                                                        label = { Text("Hari") },
+                                                                        modifier = Modifier.weight(
+                                                                            1f
+                                                                        )
+                                                                    )
+                                                                    Spacer(
+                                                                        modifier = Modifier.width(
+                                                                            8.dp
+                                                                        )
+                                                                    )
+                                                                    OutlinedTextField(
+                                                                        value = sparepartJam.value,
+                                                                        onValueChange = {
+                                                                            sparepartJam.value = it
+                                                                        },
+                                                                        label = { Text("Jam") },
+                                                                        modifier = Modifier.weight(
+                                                                            1f
+                                                                        )
+                                                                    )
+                                                                    Spacer(
+                                                                        modifier = Modifier.width(
+                                                                            8.dp
+                                                                        )
+                                                                    )
+                                                                    OutlinedTextField(
+                                                                        value = sparepartMenit.value,
+                                                                        onValueChange = {
+                                                                            sparepartMenit.value =
+                                                                                it
+                                                                        },
+                                                                        label = { Text("Menit") },
+                                                                        modifier = Modifier.weight(
+                                                                            1f
+                                                                        )
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    confirmButton = {
+                                                        Button(
+                                                            onClick = {
+                                                                showDialogBima.value = false
+                                                                isSubmitting.value = true
+
+                                                                val firestore =
+                                                                    FirebaseFirestore.getInstance()
+                                                                val docRef =
+                                                                    firestore.collection("outstanding")
+                                                                        .whereEqualTo(
+                                                                            "kode_alat",
+                                                                            kodeAlat
+                                                                        )
+                                                                        .whereEqualTo(
+                                                                            "tanggal",
+                                                                            checklist["tanggal"]
+                                                                        )
+                                                                        .whereEqualTo(
+                                                                            "item",
+                                                                            checklist["item"]
+                                                                        )
+                                                                        .limit(1)
+
+                                                                docRef.get()
+                                                                    .addOnSuccessListener { result ->
+                                                                        if (!result.isEmpty) {
+                                                                            val doc =
+                                                                                result.documents[0]
+                                                                            val docId = doc.id
+
+                                                                            // Cari index terakhir dari field tanggapan_bima_x (exclude timestamp)
+                                                                            val existingKeys =
+                                                                                doc.data?.keys?.filter {
+                                                                                    it.startsWith("tanggapan_bima_") && !it.contains(
+                                                                                        "timestamp"
+                                                                                    )
+                                                                                } ?: emptyList()
+
+                                                                            val lastIndex =
+                                                                                existingKeys.mapNotNull {
+                                                                                    it.removePrefix(
+                                                                                        "tanggapan_bima_"
+                                                                                    ).toIntOrNull()
+                                                                                }.maxOrNull() ?: 0
+
+                                                                            val nextIndex =
+                                                                                lastIndex + 1
+                                                                            val fieldName =
+                                                                                "tanggapan_bima_$nextIndex"
+                                                                            val tsFieldName =
+                                                                                "tanggapan_bima_timestamp_$nextIndex"
+
+                                                                            val updateData =
+                                                                                mutableMapOf<String, Any>(
+                                                                                    fieldName to tanggapanList.filter { it.isNotBlank() },
+                                                                                    tsFieldName to FieldValue.serverTimestamp(),
+                                                                                    "estimasi_hari_$nextIndex" to estimasiHari.value,
+                                                                                    "estimasi_jam_$nextIndex" to estimasiJam.value,
+                                                                                    "estimasi_menit_$nextIndex" to estimasiMenit.value,
+                                                                                    "status_sparepart_$nextIndex" to selectedSparepartStatus.value,
+                                                                                    "status_perbaikan" to "menunggu tanggapan teknik",
+                                                                                    "status" to "READY FOR USE"
+                                                                                )
+
+                                                                            if (selectedSparepartStatus.value == "Indent") {
+                                                                                updateData["sparepart_estimasi_hari_$nextIndex"] =
+                                                                                    sparepartHari.value
+                                                                                updateData["sparepart_estimasi_jam_$nextIndex"] =
+                                                                                    sparepartJam.value
+                                                                                updateData["sparepart_estimasi_menit_$nextIndex"] =
+                                                                                    sparepartMenit.value
+                                                                            }
+
+                                                                            firestore.collection("outstanding")
+                                                                                .document(docId)
+                                                                                .update(updateData)
+                                                                                .addOnSuccessListener {
+                                                                                    tanggapanList.clear()
+                                                                                    tanggapanList.add(
+                                                                                        ""
+                                                                                    )
+                                                                                    isSubmitting.value =
+                                                                                        false
+                                                                                    reloadTrigger.value =
+                                                                                        !reloadTrigger.value
+                                                                                }
+                                                                                .addOnFailureListener {
+                                                                                    isSubmitting.value =
+                                                                                        false
+                                                                                }
+
+                                                                            val url =
+                                                                                "https://script.google.com/macros/s/AKfycbw44hR6NoP7QqBg869xtNEn1ZUpjJ2phsNkKPIJdSrDCuXmuIhw6B85LyBtuX5RLmrV/exec"
+
+                                                                            val data = mapOf(
+                                                                                "kode_alat" to kodeAlat,
+                                                                                "tanggal" to (checklist["tanggal"]
+                                                                                    ?: ""),
+                                                                                "item" to (checklist["item"]
+                                                                                    ?: ""),
+                                                                                "tanggapan" to tanggapanList,
+                                                                                "estimasi_hari" to estimasiHari.value,
+                                                                                "estimasi_jam" to estimasiJam.value,
+                                                                                "estimasi_menit" to estimasiMenit.value,
+                                                                                "status_sparepart" to selectedSparepartStatus.value
+                                                                            )
+
+                                                                            val jsonData =
+                                                                                JSONObject(data).toString()
+
+                                                                            val client =
+                                                                                OkHttpClient()
+                                                                            val mediaType =
+                                                                                "application/json; charset=utf-8".toMediaTypeOrNull()
+                                                                            val body =
+                                                                                jsonData.toRequestBody(
+                                                                                    mediaType
+                                                                                )
+
+                                                                            val request =
+                                                                                Request.Builder()
+                                                                                    .url(url)
+                                                                                    .post(body)
+                                                                                    .build()
+
+                                                                            CoroutineScope(
+                                                                                Dispatchers.IO
+                                                                            ).launch {
+                                                                                try {
+                                                                                    client.newCall(
+                                                                                        request
+                                                                                    ).execute()
+                                                                                        .use { response ->
+                                                                                            if (!response.isSuccessful) {
+                                                                                                Log.e(
+                                                                                                    "GAS",
+                                                                                                    "Error: ${response.code} - ${response.message}"
+                                                                                                )
+                                                                                            } else {
+                                                                                                Log.d(
+                                                                                                    "GAS",
+                                                                                                    "Email sent: ${response.body?.string()}"
+                                                                                                )
+                                                                                            }
+                                                                                        }
+                                                                                } catch (e: Exception) {
+                                                                                    Log.e(
+                                                                                        "GAS",
+                                                                                        "Exception: ${e.message}"
+                                                                                    )
+                                                                                }
+                                                                            }
+
+                                                                        } else {
+                                                                            isSubmitting.value =
+                                                                                false
+                                                                        }
+                                                                    }
+                                                            },
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = Color(0xFF003366), // ✅ Dark Blue
+                                                                contentColor = Color.White
+                                                            )
+                                                        ) {
+                                                            Text("Kirim", color = Color.White)
+                                                        }
+                                                    },
+                                                    dismissButton = {
+                                                        OutlinedButton(onClick = {
+                                                            showDialogBima.value = false
+                                                        }) {
+                                                            Text("Batal")
+                                                        }
+                                                    },
+                                                    shape = RoundedCornerShape(0.dp)
+                                                )
+                                            }
                                         }
                                     }
 
@@ -731,18 +795,36 @@ class OutstandingActivity : ComponentActivity() {
                                         }
 
                                         // Tombol Reject
-                                        Button(
-                                            onClick = { showDialogReject.value = true },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color.Red,   // warna background
-                                                contentColor = Color.White    // warna teks/icon
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Reject")
-                                        }
+                                        if (jabatanUser.value == "teknik") {
 
+                                            // Tombol Reject
+                                            Button(
+                                                onClick = { showDialogReject.value = true },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color.Red,
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Reject")
+                                            }
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            // Tombol Konfirmasi Perbaikan (contoh)
+                                            Button(
+                                                onClick = { showDialogKonfirmasi.value = true },
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF003366),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Konfirmasi Perbaikan")
+                                            }
+                                        }
 
                                         fun getNextRejectIndex(data: Map<String, Any>): Int {
                                             var index = 1

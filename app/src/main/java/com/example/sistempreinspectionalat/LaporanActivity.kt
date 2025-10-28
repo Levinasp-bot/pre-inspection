@@ -65,6 +65,8 @@ fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
         firestore.collection("checklist")
             .get()
             .addOnSuccessListener { checklistResult ->
+                val tempList = mutableListOf<ReportItem>()
+
                 for (doc in checklistResult) {
                     val kodeAlat = doc.getString("kode_alat") ?: continue
                     val tanggal = doc.getString("tanggal") ?: ""
@@ -84,7 +86,12 @@ fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
                             }
 
                             val item = ReportItem(kodeAlat, namaAlat, tanggal, shift, operator)
-                            reports.add(item)
+                            tempList.add(item)
+
+                            // Urutkan berdasarkan tanggal terbaru
+                            val sortedList = tempList.sortedByDescending { parseDate(it.tanggal) }
+                            reports.clear()
+                            reports.addAll(sortedList)
                         }
                 }
             }
@@ -165,6 +172,22 @@ fun LaporanScreen(onItemClick: (ReportItem) -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+fun parseDate(dateStr: String): Long {
+    return try {
+        // Jika format "yyyy-MM-dd"
+        val formatter = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        formatter.parse(dateStr)?.time ?: 0L
+    } catch (e: Exception) {
+        try {
+            // Jika format "dd-MM-yyyy"
+            val altFormatter = java.text.SimpleDateFormat("dd-MM-yyyy", java.util.Locale.getDefault())
+            altFormatter.parse(dateStr)?.time ?: 0L
+        } catch (e2: Exception) {
+            0L
         }
     }
 }

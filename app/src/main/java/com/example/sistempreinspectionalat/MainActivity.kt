@@ -76,8 +76,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 .get()
                 .await()
 
-            val count = result.size() // jumlah dokumen yang memenuhi filter
-            outstandingCount = count
+            val count = result.size()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -118,12 +117,13 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     .background(Color.White)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.home_bg),
+                    painter = painterResource(id = R.drawable.home_bg_new),
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Crop, // agar memenuhi lebar dan tinggi sesuai rasio
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(16f / 9f) // atur sesuai rasio background
+                        .aspectRatio(16f / 9f) // rasio 16:9 tetap dijaga
+                        .align(Alignment.TopCenter)   // pastikan menempel di atas (jika dalam Box)
                 )
 
                 // Manual Icon Menu di pojok kiri atas

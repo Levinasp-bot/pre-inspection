@@ -41,6 +41,12 @@ class DetailAlatActivity : ComponentActivity() {
     }
 }
 
+// 🔠 Fungsi bantu untuk kapitalisasi setiap kata
+fun String.capitalizeWords(): String =
+    this.lowercase().split(" ").joinToString(" ") { word ->
+        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailAlatScreen(kodeAlat: String) {
@@ -103,6 +109,7 @@ fun DetailAlatScreen(kodeAlat: String) {
         .background(darkBlue)) {
 
         Column {
+            // 🔹 Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -128,13 +135,14 @@ fun DetailAlatScreen(kodeAlat: String) {
                 }
             }
 
+            // 🔹 Konten Utama
             Surface(
-                modifier = Modifier
-                    .fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 color = Color.White,
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
                 LazyColumn(modifier = Modifier.padding(16.dp)) {
+                    // --- Data Alat ---
                     item {
                         Card(
                             modifier = Modifier
@@ -146,13 +154,18 @@ fun DetailAlatScreen(kodeAlat: String) {
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(kodeAlat, fontSize = 22.sp, color = darkBlue, fontWeight = FontWeight.Bold)
-                                Text(alat?.get("nama")?.toString() ?: "", fontSize = 14.sp, color = darkBlue)
+                                Text(
+                                    alat?.get("nama")?.toString()?.capitalizeWords() ?: "",
+                                    fontSize = 14.sp,
+                                    color = darkBlue
+                                )
                                 Text("Inspeksi Terakhir: $tanggalTerbaru", fontSize = 12.sp, color = Color.Gray)
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
+                    // --- Kondisi Terkini ---
                     item {
                         Card(
                             modifier = Modifier
@@ -173,14 +186,14 @@ fun DetailAlatScreen(kodeAlat: String) {
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = komponen.replace("_", " "),
+                                            text = komponen.replace("_", " ").capitalizeWords(),
                                             fontSize = 13.sp,
-                                            color = darkBlue// Ukuran kecil
+                                            color = darkBlue
                                         )
                                         Text(
-                                            text = kondisi,
+                                            text = kondisi.capitalizeWords(),
                                             fontSize = 13.sp,
-                                            color = darkBlue// Ukuran kecil
+                                            color = darkBlue
                                         )
                                     }
                                 }
@@ -189,6 +202,7 @@ fun DetailAlatScreen(kodeAlat: String) {
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
+                    // --- Riwayat Perbaikan ---
                     item {
                         Card(
                             modifier = Modifier
@@ -209,23 +223,23 @@ fun DetailAlatScreen(kodeAlat: String) {
                                             color = darkBlue
                                         )
                                         Text(
-                                            text = item["item"]?.toString() ?: "",
+                                            text = item["item"]?.toString()?.capitalizeWords() ?: "",
                                             fontSize = 13.sp,
                                             color = darkBlue
                                         )
 
-                                        // Cari key yang sesuai pola "keterangan_perbaikan_0", "keterangan_perbaikan_2", dst
+                                        // Cari key keterangan perbaikan terbaru
                                         val tindakanKeys = item.keys
                                             .filter { it.startsWith("keterangan_perbaikan_") }
                                             .mapNotNull { key ->
                                                 val index = key.removePrefix("keterangan_perbaikan_").toIntOrNull()
                                                 if (index != null && index % 2 == 0) index to key else null
                                             }
-                                            .sortedByDescending { it.first } // Ambil index tertinggi
+                                            .sortedByDescending { it.first }
                                             .map { it.second }
 
                                         val tindakanTerbaru = tindakanKeys.firstOrNull()?.let { key ->
-                                            item[key]?.toString() ?: ""
+                                            item[key]?.toString()?.capitalizeWords() ?: ""
                                         } ?: ""
 
                                         Text(
@@ -235,7 +249,6 @@ fun DetailAlatScreen(kodeAlat: String) {
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                     }
-
                                 }
                             }
                         }

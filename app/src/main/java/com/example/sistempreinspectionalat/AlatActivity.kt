@@ -41,7 +41,10 @@ fun AlatScreen() {
     val darkBlue = Color(0xFF003366)
     val alatList = remember { mutableStateListOf<Map<String, String>>() }
     var searchText by remember { mutableStateOf("") }
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var selectedFilter by remember { mutableStateOf("Semua") }
 
+    // Ambil data dari Firestore
     LaunchedEffect(Unit) {
         val firestore = FirebaseFirestore.getInstance()
         firestore.collection("alat")
@@ -60,14 +63,25 @@ fun AlatScreen() {
             }
     }
 
-    val filteredList = alatList.filter {
+    // Proses filter pencarian dan status
+    val filteredList = alatList.filter { alat ->
         val query = searchText.lowercase()
-        it["kode_alat"]?.lowercase()?.contains(query) == true ||
-                it["nama"]?.lowercase()?.contains(query) == true
+        val matchesSearch =
+            alat["kode_alat"]?.lowercase()?.contains(query) == true ||
+                    alat["nama"]?.lowercase()?.contains(query) == true
+
+        val matchesStatus = when (selectedFilter) {
+            "BREAK DOWN" -> alat["status"]?.equals("BREAK DOWN", ignoreCase = true) == true
+            "READY FOR USE" -> alat["status"]?.equals("READY FOR USE", ignoreCase = true) == true
+            else -> true
+        }
+
+        matchesSearch && matchesStatus
     }
 
     Box(modifier = Modifier.fillMaxSize().background(darkBlue)) {
         Column {
+            // Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -93,15 +107,18 @@ fun AlatScreen() {
                 }
             }
 
+            // Konten utama
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = Color.White,
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
-                Column(modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
                 ) {
+                    // Search + Filter
                     OutlinedTextField(
                         value = searchText,
                         onValueChange = { searchText = it },
@@ -113,7 +130,8 @@ fun AlatScreen() {
                             Icon(
                                 imageVector = Icons.Default.Tune,
                                 contentDescription = "Filter",
-                                tint = Color.LightGray
+                                tint = Color.LightGray,
+                                modifier = Modifier.clickable { showFilterDialog = true }
                             )
                         },
                         modifier = Modifier
@@ -122,14 +140,16 @@ fun AlatScreen() {
                         singleLine = true
                     )
 
+                    // Daftar alat
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(filteredList) { alat ->
                             val status = alat["status"] ?: ""
-                            val containerColor = if (status.equals("BREAK DOWN", ignoreCase = true)) {
-                                Color.Red.copy(alpha = 0.2f) // merah muda biar teks masih kelihatan
-                            } else {
-                                Color.White
-                            }
+                            val containerColor =
+                                if (status.equals("BREAK DOWN", ignoreCase = true)) {
+                                    Color.Red.copy(alpha = 0.2f)
+                                } else {
+                                    Color.White
+                                }
 
                             OutlinedCard(
                                 modifier = Modifier
@@ -155,7 +175,8 @@ fun AlatScreen() {
                                     )
                                     Text(
                                         text = "Status: $status",
-                                        color = if (status.equals("BREAK DOWN", ignoreCase = true)) Color.Red else darkBlue,
+                                        color = if (status.equals("BREAK DOWN", ignoreCase = true))
+                                            Color.Red else darkBlue,
                                         fontWeight = FontWeight.Medium,
                                         fontSize = 13.sp
                                     )
@@ -167,5 +188,40 @@ fun AlatScreen() {
             }
         }
     }
-}
 
+    // Dialog filter
+    if (showFilterDialog) {
+        AlertDialog(
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text("Pilih Status Alat") },
+            text = {
+                Column {
+                    val options = listOf("Semua", "BREAK DOWN", "READY FOR USE")
+                    options.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedFilter = option
+                                    showFilterDialog = false
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = (selectedFilter == option),
+                                onClick = {
+                                    selectedFilter = option
+                                    showFilterDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(option)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+}
