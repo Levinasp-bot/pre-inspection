@@ -156,11 +156,15 @@ class OutstandingActivity : ComponentActivity() {
             val auth = FirebaseAuth.getInstance()
             val currentUser = auth.currentUser
             if (currentUser != null) {
-                FirebaseFirestore.getInstance().collection("users")
-                    .document(currentUser.uid)
+                FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .whereEqualTo("uid", currentUser.uid)
                     .get()
-                    .addOnSuccessListener { document ->
-                        jabatanUser.value = document.getString("jabatan") ?: ""
+                    .addOnSuccessListener { querySnapshot ->
+                        if (!querySnapshot.isEmpty) {
+                            val document = querySnapshot.documents[0]
+                            jabatanUser.value = document.getString("jabatan") ?: ""
+                        }
                     }
             }
         }
