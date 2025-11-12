@@ -71,16 +71,25 @@ fun PreInspectionScreen(onNext: (String, String, String, String) -> Unit) {
     var selectedAlat by remember { mutableStateOf("") }
 
     // ⏱ Ambil data alat dari Firestore
+    // ⏱ Ambil data alat dari Firestore
     LaunchedEffect(true) {
         FirebaseFirestore.getInstance().collection("alat")
             .get()
             .addOnSuccessListener { result ->
                 alatList.clear()
-                for (document in result) {
+
+                // Ambil semua data dulu ke list sementara
+                val tempList = result.documents.mapNotNull { document ->
                     val kode = document.getString("kode_alat")
                     val nama = document.getString("nama") ?: ""
-                    if (!kode.isNullOrEmpty()) alatList.add(kode to nama)
+                    if (!kode.isNullOrEmpty()) kode to nama else null
                 }
+
+                // Urutkan berdasarkan nama (A-Z)
+                val sortedList = tempList.sortedBy { it.second.lowercase() }
+
+                // Masukkan hasil urutan ke alatList (mutableStateListOf)
+                alatList.addAll(sortedList)
             }
     }
 

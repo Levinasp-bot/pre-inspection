@@ -974,19 +974,6 @@ class OutstandingActivity : ComponentActivity() {
                                             return maxIndex + 1
                                         }
 
-                                        // Tombol Konfirmasi
-                                        Button(
-                                            onClick = { showDialogKonfirmasi.value = true },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF43A047),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Konfirmasi")
-                                        }
-
                                         Spacer(modifier = Modifier.height(8.dp))
 
                                         val selectedStatusAlat = remember { mutableStateOf("Break Down") }

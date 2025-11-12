@@ -96,7 +96,7 @@ class ChecklistActivity : ComponentActivity() {
 //      val statusAlat = remember { mutableStateOf("READY FOR USE") }
         val kondisiTidakNormalSet = setOf(
             "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
-            "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR"
+            "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR", "TIDAK LANCAR"
         )
 
         val itemTidakNormal = checklistItems.filter {
@@ -522,21 +522,18 @@ class ChecklistActivity : ComponentActivity() {
 
         val kondisiTidakNormalSet = setOf(
             "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
-            "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR"
+            "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR", "TIDAK LANCAR"
         )
 
-        val radioOptions = when {
-            item.contains("oli", ignoreCase = true) -> listOf("YA", "TIDAK")
-            item.contains("lampu", ignoreCase = true) -> listOf("MENYALA", "TIDAK MENYALA")
-            item.contains("ban", ignoreCase = true) -> listOf("YA", "TIDAK")
-            item.contains("tangga", ignoreCase = true) -> listOf("RUSAK", "TIDAK")
-            item.contains("area kabin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
-            item.contains("ruang mesin", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
-            item.contains("sekitar alat", ignoreCase = true) -> listOf("BERSIH", "KOTOR")
-            item.contains("gerakan", ignoreCase = true) -> listOf("NORMAL", "TIDAK NORMAL")
-            item.contains("slewing", ignoreCase = true) -> listOf("BERFUNGSI", "TIDAK BERFUNGSI")
-            else -> listOf("BAIK", "TIDAK BAIK")
-        }
+        // ✅ Pisahkan teks item dan pilihan di dalam tanda kurung
+        val regex = Regex("^(.*)\\((.*)\\)\$")
+        val matchResult = regex.find(item.trim())
+
+        val itemText = matchResult?.groupValues?.get(1)?.trim() ?: item
+        val optionsRaw = matchResult?.groupValues?.get(2)?.trim() ?: "BAIK/TIDAK BAIK"
+
+        // ✅ Pisahkan pilihan berdasarkan "/" di dalam tanda kurung
+        val radioOptions = optionsRaw.split("/").map { it.trim() }
 
         if (showDialog.value) {
             AlertDialog(
@@ -563,7 +560,7 @@ class ChecklistActivity : ComponentActivity() {
 
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = item,
+                text = itemText,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 8.dp)

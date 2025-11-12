@@ -51,15 +51,21 @@ fun AlatScreen() {
             .get()
             .addOnSuccessListener { result ->
                 alatList.clear()
-                result.documents.forEach { doc ->
-                    alatList.add(
-                        mapOf(
-                            "kode_alat" to (doc.getString("kode_alat") ?: ""),
-                            "nama" to (doc.getString("nama") ?: ""),
-                            "status" to (doc.getString("status") ?: "")
-                        )
+
+                // Ambil semua data dulu ke list sementara
+                val tempList = result.documents.map { doc ->
+                    mapOf(
+                        "kode_alat" to (doc.getString("kode_alat") ?: ""),
+                        "nama" to (doc.getString("nama") ?: ""),
+                        "status" to (doc.getString("status") ?: "")
                     )
                 }
+
+                // Urutkan dari A-Z berdasarkan nama alat
+                val sortedList = tempList.sortedBy { it["nama"]?.lowercase() ?: "" }
+
+                // Tambahkan ke mutableStateList
+                alatList.addAll(sortedList)
             }
     }
 
