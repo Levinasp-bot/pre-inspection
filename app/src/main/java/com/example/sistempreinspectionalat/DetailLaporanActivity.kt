@@ -88,7 +88,7 @@ fun DetailLaporanScreen(
 
                 // 🔹 List kondisi valid
                 val validValues = setOf(
-                    "YA", "TIDAK",
+                    "YA", "TIDAK", "ADA",
                     "RUSAK", "MENYALA", "TIDAK MENYALA",
                     "BERSIH", "KOTOR",
                     "NORMAL", "TIDAK NORMAL",
@@ -220,7 +220,7 @@ fun DetailLaporanScreen(
                                         )
 
                                         val statusColor = when (status.uppercase()) {
-                                            "YA", "RUSAK", "TIDAK MENYALA", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI", "TIDAK LANCAR" -> Color.Red
+                                            "YA", "RUSAK", "TIDAK MENYALA", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI", "TIDAK LANCAR", "ADA" -> Color.Red
                                             "TIDAK", "MENYALA", "BERSIH", "NORMAL", "BERFUNGSI", "LANCAR" -> darkBlue
                                             else -> Color.Gray
                                         }

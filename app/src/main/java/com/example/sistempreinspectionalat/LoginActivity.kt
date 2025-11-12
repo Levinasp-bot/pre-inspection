@@ -31,6 +31,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import android.content.Intent
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
 
 
@@ -169,19 +170,28 @@ fun LoginScreen() {
 
                     Button(
                         onClick = {
-                            isLoading = true
-                            loginWithNIPP(nipp, password) { success, message ->
-                                isLoading = false
-                                if (success) {
-                                    // Simpan status login
-                                    val sharedPrefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-                                    sharedPrefs.edit().putBoolean("is_logged_in", true).apply()
+                            when {
+                                nipp.isBlank() -> {
+                                    Toast.makeText(context, "NIPP wajib diisi", Toast.LENGTH_SHORT).show()
+                                }
+                                password.isBlank() -> {
+                                    Toast.makeText(context, "Password wajib diisi", Toast.LENGTH_SHORT).show()
+                                }
+                                else -> {
+                                    isLoading = true
+                                    loginWithNIPP(nipp, password) { success, message ->
+                                        isLoading = false
+                                        if (success) {
+                                            val sharedPrefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+                                            sharedPrefs.edit().putBoolean("is_logged_in", true).apply()
 
-                                    val intent = Intent(context, MainActivity::class.java)
-                                    context.startActivity(intent)
-                                    (context as? Activity)?.finish()
-                                }else {
-                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                            val intent = Intent(context, MainActivity::class.java)
+                                            context.startActivity(intent)
+                                            (context as? Activity)?.finish()
+                                        } else {
+                                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -202,8 +212,13 @@ fun LoginScreen() {
                         }
                     }
 
+
                     TextButton(
-                        onClick = { /* TODO: handle forgot password */ },
+                        onClick = {
+                            val resetUrl = "https://accounts.google.com/signin/recovery"
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(resetUrl))
+                            context.startActivity(intent)
+                        },
                         modifier = Modifier.padding(top = 16.dp)
                     ) {
                         Text(
@@ -212,6 +227,7 @@ fun LoginScreen() {
                             fontSize = 14.sp
                         )
                     }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(

@@ -95,7 +95,7 @@ class ChecklistActivity : ComponentActivity() {
         val preOperationItems = remember { mutableStateListOf<String>() }
 //      val statusAlat = remember { mutableStateOf("READY FOR USE") }
         val kondisiTidakNormalSet = setOf(
-            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
+            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK", "ADA",
             "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR", "TIDAK LANCAR"
         )
 
@@ -521,18 +521,21 @@ class ChecklistActivity : ComponentActivity() {
         }
 
         val kondisiTidakNormalSet = setOf(
-            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK",
+            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK", "ADA",
             "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR", "TIDAK LANCAR"
         )
 
         // ✅ Pisahkan teks item dan pilihan di dalam tanda kurung
-        val regex = Regex("^(.*)\\((.*)\\)\$")
+        val regex = Regex("^(.*?)\\s*\\((.*?)\\)\\s*$")
         val matchResult = regex.find(item.trim())
 
+        // ✅ Nama item hanya bagian sebelum tanda kurung
         val itemText = matchResult?.groupValues?.get(1)?.trim() ?: item
+
+        // ✅ Pilihan diambil dari dalam tanda kurung, default fallback "BAIK/TIDAK BAIK"
         val optionsRaw = matchResult?.groupValues?.get(2)?.trim() ?: "BAIK/TIDAK BAIK"
 
-        // ✅ Pisahkan pilihan berdasarkan "/" di dalam tanda kurung
+        // ✅ Pisahkan pilihan berdasarkan "/"
         val radioOptions = optionsRaw.split("/").map { it.trim() }
 
         if (showDialog.value) {
