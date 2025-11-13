@@ -323,7 +323,13 @@ class OutstandingActivity : ComponentActivity() {
                                         fontSize = 14.sp
                                     )
                                     Text(
-                                        text = "Item: ${checklist["item"]}",
+                                        text = "Item: ${
+                                            checklist["item"]
+                                                ?.toString()
+                                                ?.removeParenthesesText()
+                                                ?.replace("_", " ")
+                                                ?.trim()
+                                        }",
                                         color = Color(0xFF003366),
                                         fontSize = 14.sp
                                     )

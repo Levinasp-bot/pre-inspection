@@ -16,22 +16,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class ChecklistLaporan(
     val kode_alat: String = "",
     val shift: String = "",
-    val tanggal: String = "",
+    val tanggal: Any? = null,
     val item_statuses: Map<String, String> = emptyMap()
 )
 
 class DetailLaporanActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -61,7 +63,7 @@ fun DetailLaporanScreen(
     val TAG = "DetailLaporanScreen"
     val firestore = FirebaseFirestore.getInstance()
     val darkBlue = Color(0xFF003366)
-    val context = LocalContext.current
+
     var checklist by remember { mutableStateOf<ChecklistLaporan?>(null) }
     var items by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -86,9 +88,9 @@ fun DetailLaporanScreen(
                 val doc = checklistSnap.documents.first()
                 val dataMap = doc.data ?: emptyMap()
 
-                // 🔹 List kondisi valid
                 val validValues = setOf(
-                    "YA", "TIDAK", "ADA",
+                    "YA", "TIDAK", "ADA", "TIDAK ADA",
+                    "BAIK", "TIDAK BAIK",
                     "RUSAK", "MENYALA", "TIDAK MENYALA",
                     "BERSIH", "KOTOR",
                     "NORMAL", "TIDAK NORMAL",
@@ -96,7 +98,6 @@ fun DetailLaporanScreen(
                     "LANCAR", "TIDAK LANCAR"
                 )
 
-                // 🔹 Ambil hanya field dengan value yang sesuai
                 val itemStatuses = dataMap.filter { entry ->
                     val value = entry.value as? String ?: ""
                     validValues.contains(value)
@@ -104,7 +105,7 @@ fun DetailLaporanScreen(
 
                 checklist = ChecklistLaporan(
                     kode_alat = dataMap["kode_alat"] as? String ?: "",
-                    tanggal = dataMap["tanggal"] as? String ?: "",
+                    tanggal = dataMap["tanggal"],
                     shift = dataMap["shift"] as? String ?: "",
                     item_statuses = itemStatuses.toMap()
                 )
@@ -121,13 +122,14 @@ fun DetailLaporanScreen(
         }
     }
 
+    // 🔹 UI
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(darkBlue)
     ) {
         Column {
-            // 🔹 Custom TopBar
+            // 🔹 Top Bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -191,7 +193,6 @@ fun DetailLaporanScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Checklist section
                             Text(
                                 text = "Checklist",
                                 fontSize = 16.sp,
@@ -200,35 +201,42 @@ fun DetailLaporanScreen(
                             )
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
 
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 items(items) { (itemName, status) ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        // 🔹 Format nama item
-                                        val formattedName = itemName
-                                            .replace("_", " ") // ganti _ dengan spasi
-                                            .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                                    // Format nama item
+                                    val namaBersih = itemName
+                                        .replace("_", " ")
+                                        .replace("\\s*\\(.*?\\)".toRegex(), "")
+                                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
+                                    val warna = when (status.uppercase()) {
+                                        "RUSAK", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI", "TIDAK LANCAR", "TIDAK MENYALA", "TIDAK BAIK" -> Color.Red
+                                        "BAIK", "NORMAL", "BERSIH", "BERFUNGSI", "LANCAR", "MENYALA" -> darkBlue
+                                        else -> Color.Gray
+                                    }
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         Text(
-                                            text = formattedName,
-                                            fontSize = 14.sp,
-                                            color = darkBlue
+                                            text = namaBersih,
+                                            fontSize = 13.sp,
+                                            color = darkBlue,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(end = 8.dp)
                                         )
 
-                                        val statusColor = when (status.uppercase()) {
-                                            "YA", "RUSAK", "TIDAK MENYALA", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI", "TIDAK LANCAR", "ADA" -> Color.Red
-                                            "TIDAK", "MENYALA", "BERSIH", "NORMAL", "BERFUNGSI", "LANCAR" -> darkBlue
-                                            else -> Color.Gray
-                                        }
                                         Text(
                                             text = status,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = statusColor
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold, // ✅ tebal
+                                            color = warna,
+                                            textAlign = TextAlign.End,   // ✅ rata kanan
+                                            modifier = Modifier.weight(0.6f)
                                         )
                                     }
                                     Divider()

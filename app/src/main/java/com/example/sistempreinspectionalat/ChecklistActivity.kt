@@ -94,13 +94,38 @@ class ChecklistActivity : ComponentActivity() {
         val preInspectionItems = remember { mutableStateListOf<String>() }
         val preOperationItems = remember { mutableStateListOf<String>() }
 //      val statusAlat = remember { mutableStateOf("READY FOR USE") }
-        val kondisiTidakNormalSet = setOf(
-            "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK", "ADA",
-            "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR", "TIDAK LANCAR"
-        )
+
+        val kondisiTidakNormalSet = remember { mutableStateListOf<String>() }
+        val kondisiNormalSet = remember { mutableStateListOf<String>() }
 
         val itemTidakNormal = checklistItems.filter {
             kondisiMap[it] in kondisiTidakNormalSet
+        }
+
+        LaunchedEffect(Unit) {
+            // Ambil kondisi tidak normal
+            firestore.collection("kondisi_tidak_normal")
+                .get()
+                .addOnSuccessListener { result ->
+                    kondisiTidakNormalSet.clear()
+                    kondisiTidakNormalSet.addAll(result.documents.mapNotNull { it.getString("nama") })
+                    Log.d("FirestoreKondisi", "Kondisi tidak normal: $kondisiTidakNormalSet")
+                }
+                .addOnFailureListener {
+                    Log.e("FirestoreKondisi", "Gagal ambil kondisi tidak normal", it)
+                }
+
+            // Ambil kondisi normal
+            firestore.collection("kondisi_normal")
+                .get()
+                .addOnSuccessListener { result ->
+                    kondisiNormalSet.clear()
+                    kondisiNormalSet.addAll(result.documents.mapNotNull { it.getString("nama") })
+                    Log.d("FirestoreKondisi", "Kondisi normal: $kondisiNormalSet")
+                }
+                .addOnFailureListener {
+                    Log.e("FirestoreKondisi", "Gagal ambil kondisi normal", it)
+                }
         }
 
         LaunchedEffect(kodeAlat) {
@@ -209,7 +234,8 @@ class ChecklistActivity : ComponentActivity() {
                                     keterangan = keteranganMap[item] ?: "",
                                     onKeteranganChange = { newValue -> keteranganMap[item] = newValue },
                                     imageBitmap = fotoMap[item],
-                                    onImageCapture = { bitmap -> fotoMap[item] = bitmap }
+                                    onImageCapture = { bitmap -> fotoMap[item] = bitmap },
+                                    kondisiTidakNormalSet = kondisiTidakNormalSet // 🔹 dikirim dari firestore
                                 )
                             }
                         }
@@ -232,7 +258,8 @@ class ChecklistActivity : ComponentActivity() {
                                     keterangan = keteranganMap[item] ?: "",
                                     onKeteranganChange = { newValue -> keteranganMap[item] = newValue },
                                     imageBitmap = fotoMap[item],
-                                    onImageCapture = { bitmap -> fotoMap[item] = bitmap }
+                                    onImageCapture = { bitmap -> fotoMap[item] = bitmap },
+                                    kondisiTidakNormalSet = kondisiTidakNormalSet // 🔹 dikirim dari firestore
                                 )
                             }
                         }
@@ -502,7 +529,8 @@ class ChecklistActivity : ComponentActivity() {
         keterangan: String,
         onKeteranganChange: (String) -> Unit,
         imageBitmap: Bitmap?,
-        onImageCapture: (Bitmap) -> Unit
+        onImageCapture: (Bitmap) -> Unit,
+        kondisiTidakNormalSet: List<String> // 🔹 Tambahan
     ) {
         val context = LocalContext.current
         val showDialog = remember { mutableStateOf(false) }

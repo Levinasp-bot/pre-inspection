@@ -60,6 +60,8 @@ fun DetailOutstandingScreen(
 ) {
     val firestore = FirebaseFirestore.getInstance()
     val dataDetail = remember { mutableStateOf<Map<String, Any>?>(null) }
+    val itemRaw = dataDetail.value?.get("item")?.toString() ?: item
+    val itemClean = itemRaw.replace("\\s*\\(.*?\\)".toRegex(), "").trim()
 
     LaunchedEffect(kodeAlat, item) {
         firestore.collection("outstanding")
@@ -173,7 +175,10 @@ fun DetailOutstandingScreen(
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                Text("Item: ${dataDetail.value?.get("item") ?: item}", color = darkBlue)
+                                val itemRaw = dataDetail.value?.get("item")?.toString() ?: item
+                                val itemClean = itemRaw.replace("\\s*\\(.*?\\)".toRegex(), "").trim()
+                                Text("Item: $itemClean", color = darkBlue)
+
                                 Text("Kondisi: ${dataDetail.value?.get("kondisi") ?: "-"}", color = darkBlue)
 
                                 val keteranganRaw = dataDetail.value?.get("keterangan")

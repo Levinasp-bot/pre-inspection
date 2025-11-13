@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -20,11 +19,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import com.example.sistempreinspectionalat.ui.theme.SistemPreinspectionAlatTheme
+import com.google.firebase.Timestamp
+import java.text.SimpleDateFormat
+import java.util.*
+
 
 class DetailAlatActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,17 +51,43 @@ fun String.capitalizeWords(): String =
         word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 
+// 🔠 Fungsi bantu untuk menghapus teks dalam tanda kurung
+fun String.removeParenthesesText(): String =
+    this.replace("\\s*\\(.*?\\)".toRegex(), "").trim()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailAlatScreen(kodeAlat: String) {
     val context = LocalContext.current
     val darkBlue = Color(0xFF003366)
     val firestore = FirebaseFirestore.getInstance()
+
     var alat by remember { mutableStateOf<Map<String, Any>?>(null) }
     var kondisiTerkini by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var riwayatPerbaikan by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     var tanggalTerbaru by remember { mutableStateOf("-") }
     var operatorTerakhir by remember { mutableStateOf("-") }
+
+    // 🔹 Ambil kondisi dari Firestore
+    val kondisiTidakNormalSet = remember { mutableStateListOf<String>() }
+    val kondisiNormalSet = remember { mutableStateListOf<String>() }
+
+    LaunchedEffect(Unit) {
+        try {
+            val tidakNormalDocs = firestore.collection("kondisi_tidak_normal").get().await()
+            kondisiTidakNormalSet.clear()
+            kondisiTidakNormalSet.addAll(tidakNormalDocs.documents.mapNotNull { it.getString("nama") })
+
+            val normalDocs = firestore.collection("kondisi_normal").get().await()
+            kondisiNormalSet.clear()
+            kondisiNormalSet.addAll(normalDocs.documents.mapNotNull { it.getString("nama") })
+
+            Log.d("FirestoreKondisi", "Kondisi tidak normal: $kondisiTidakNormalSet")
+            Log.d("FirestoreKondisi", "Kondisi normal: $kondisiNormalSet")
+        } catch (e: Exception) {
+            Log.e("FirestoreKondisi", "Gagal ambil data kondisi", e)
+        }
+    }
 
     LaunchedEffect(kodeAlat) {
         try {
@@ -89,8 +119,12 @@ fun DetailAlatScreen(kodeAlat: String) {
             tanggalTerbaru = latestChecklist?.getString("tanggal") ?: "-"
             operatorTerakhir = latestChecklist?.getString("operator") ?: "-"
 
-            val kondisi = latestChecklist?.data?.filterKeys {
-                it != "kode_alat" && it != "tanggal" && it != "shift" && it != "operator"
+            val kondisi = latestChecklist?.data?.filterKeys { key ->
+                key != "kode_alat" &&
+                        key != "tanggal" &&
+                        key != "shift" &&
+                        key != "operator" &&
+                        key != "timestamp" // ⛔ tidak ikut ditampilkan
             }?.mapValues { it.value.toString() } ?: emptyMap()
             kondisiTerkini = kondisi
 
@@ -104,10 +138,11 @@ fun DetailAlatScreen(kodeAlat: String) {
         }
     }
 
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .background(darkBlue)) {
-
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(darkBlue)
+    ) {
         Column {
             // 🔹 Header
             Box(
@@ -149,17 +184,25 @@ fun DetailAlatScreen(kodeAlat: String) {
                                 .fillMaxWidth()
                                 .border(1.dp, darkBlue, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(0.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(kodeAlat, fontSize = 22.sp, color = darkBlue, fontWeight = FontWeight.Bold)
+                                Text(
+                                    kodeAlat,
+                                    fontSize = 22.sp,
+                                    color = darkBlue,
+                                    fontWeight = FontWeight.Bold
+                                )
                                 Text(
                                     alat?.get("nama")?.toString()?.capitalizeWords() ?: "",
                                     fontSize = 14.sp,
                                     color = darkBlue
                                 )
-                                Text("Inspeksi Terakhir: $tanggalTerbaru", fontSize = 12.sp, color = Color.Gray)
+                                Text(
+                                    "Inspeksi Terakhir: $tanggalTerbaru",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -172,28 +215,54 @@ fun DetailAlatScreen(kodeAlat: String) {
                                 .fillMaxWidth()
                                 .border(1.dp, darkBlue, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(0.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Kondisi Terkini", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = darkBlue)
+                                Text(
+                                    "Kondisi Terkini",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    color = darkBlue
+                                )
                                 Spacer(modifier = Modifier.height(8.dp))
+
                                 kondisiTerkini.forEach { (komponen, kondisi) ->
+                                    val namaBersih = komponen
+                                        .replace("_", " ")
+                                        .removeParenthesesText()
+                                        .capitalizeWords()
+
+                                    val warna = when {
+                                        kondisiTidakNormalSet.contains(kondisi.uppercase()) -> Color.Red
+                                        kondisiNormalSet.contains(kondisi.uppercase()) -> darkBlue
+                                        else -> Color.Gray
+                                    }
+
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = komponen.replace("_", " ").capitalizeWords(),
+                                            text = namaBersih,
                                             fontSize = 13.sp,
-                                            color = darkBlue
+                                            color = darkBlue,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(end = 8.dp)
                                         )
+
                                         Text(
                                             text = kondisi.capitalizeWords(),
                                             fontSize = 13.sp,
-                                            color = darkBlue
+                                            fontWeight = FontWeight.Bold, // ✅ Bold
+                                            color = warna,
+                                            textAlign = TextAlign.End,     // ✅ Rata kanan
+                                            modifier = Modifier
+                                                .weight(0.6f)
+                                                .padding(start = 8.dp),
+                                            maxLines = 1
                                         )
                                     }
                                 }
@@ -209,12 +278,17 @@ fun DetailAlatScreen(kodeAlat: String) {
                                 .fillMaxWidth()
                                 .border(1.dp, darkBlue, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(0.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Riwayat Perbaikan", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = darkBlue)
+                                Text(
+                                    "Riwayat Perbaikan",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = darkBlue
+                                )
                                 Spacer(modifier = Modifier.height(8.dp))
+
                                 riwayatPerbaikan.forEach { item ->
                                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                                         Text(
@@ -222,25 +296,29 @@ fun DetailAlatScreen(kodeAlat: String) {
                                             fontWeight = FontWeight.SemiBold,
                                             color = darkBlue
                                         )
-                                        Text(
-                                            text = item["item"]?.toString()?.capitalizeWords() ?: "",
-                                            fontSize = 13.sp,
-                                            color = darkBlue
-                                        )
 
-                                        // Cari key keterangan perbaikan terbaru
+                                        val itemBersih = item["item"]?.toString()
+                                            ?.removeParenthesesText()
+                                            ?.capitalizeWords() ?: ""
+
+                                        Text(itemBersih, fontSize = 13.sp, color = darkBlue)
+
+                                        // ambil tindakan terbaru
                                         val tindakanKeys = item.keys
                                             .filter { it.startsWith("keterangan_perbaikan_") }
                                             .mapNotNull { key ->
-                                                val index = key.removePrefix("keterangan_perbaikan_").toIntOrNull()
+                                                val index =
+                                                    key.removePrefix("keterangan_perbaikan_")
+                                                        .toIntOrNull()
                                                 if (index != null && index % 2 == 0) index to key else null
                                             }
                                             .sortedByDescending { it.first }
                                             .map { it.second }
 
-                                        val tindakanTerbaru = tindakanKeys.firstOrNull()?.let { key ->
-                                            item[key]?.toString()?.capitalizeWords() ?: ""
-                                        } ?: ""
+                                        val tindakanTerbaru =
+                                            tindakanKeys.firstOrNull()?.let { key ->
+                                                item[key]?.toString()?.capitalizeWords() ?: ""
+                                            } ?: ""
 
                                         Text(
                                             text = "Tindakan: $tindakanTerbaru",
@@ -259,3 +337,4 @@ fun DetailAlatScreen(kodeAlat: String) {
         }
     }
 }
+
