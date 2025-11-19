@@ -105,6 +105,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshState
+import androidx.compose.material3.pulltorefresh.pullToRefresh
 import okhttp3.RequestBody.Companion.toRequestBody
 
 
@@ -149,7 +154,9 @@ class OutstandingActivity : ComponentActivity() {
         val urlKonfirmasi = "https://script.google.com/macros/s/AKfycby-5zu0Nbvnb8-aJAVYxVkj_zyZjcNTkilPdhNf7r3WeTLF-DYYAeX6ZQVLn5uFsZAp/exec"
 
         val client = OkHttpClient()
+        val isRefreshing = remember { mutableStateOf(false) }
 
+        val pullRefreshState = rememberPullToRefreshState()
         val jabatanUser = remember { mutableStateOf("") }
 
         LaunchedEffect(Unit) {
@@ -229,6 +236,8 @@ class OutstandingActivity : ComponentActivity() {
 
                         checklistList.add(item)
                     }
+                    isRefreshing.value = false
+
                 }
         }
 
@@ -268,7 +277,16 @@ class OutstandingActivity : ComponentActivity() {
 
                 // ===== CONTENT (PUTIH ROUNDED) =====
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pullToRefresh(
+                            isRefreshing = isRefreshing.value,   // ← pakai .value
+                            state = pullRefreshState,
+                            onRefresh = {
+                                isRefreshing.value = true
+                                reloadTrigger.value = !reloadTrigger.value
+                            }
+                        ),
                     color = Color.White,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
@@ -2466,6 +2484,12 @@ class OutstandingActivity : ComponentActivity() {
                     }
                 }
             }
+            // indikator refresh
+            PullToRefreshDefaults.Indicator(
+                state = pullRefreshState,
+                isRefreshing = isRefreshing.value,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 

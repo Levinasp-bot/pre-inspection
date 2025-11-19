@@ -32,6 +32,8 @@ import android.content.Intent
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.google.firebase.auth.FirebaseAuth
 
 
@@ -298,3 +300,4 @@ fun loginWithNIPP(nipp: String, password: String, onResult: (Boolean, String?) -
             onResult(false, "Gagal mengakses database.")
         }
 }
+

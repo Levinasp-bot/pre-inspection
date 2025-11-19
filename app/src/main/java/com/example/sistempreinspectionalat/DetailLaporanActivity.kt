@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -18,13 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.*
 
 data class ChecklistLaporan(
     val kode_alat: String = "",
@@ -201,45 +199,69 @@ fun DetailLaporanScreen(
                             )
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
 
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(items) { (itemName, status) ->
-                                    // Format nama item
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(0.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                itemsIndexed(items) { index, (itemName, status) ->
+
                                     val namaBersih = itemName
                                         .replace("_", " ")
                                         .replace("\\s*\\(.*?\\)".toRegex(), "")
                                         .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
                                     val warna = when (status.uppercase()) {
-                                        "RUSAK", "KOTOR", "TIDAK NORMAL", "TIDAK BERFUNGSI", "TIDAK LANCAR", "TIDAK MENYALA", "TIDAK BAIK" -> Color.Red
-                                        "BAIK", "NORMAL", "BERSIH", "BERFUNGSI", "LANCAR", "MENYALA" -> darkBlue
+                                        "TIDAK BAIK", "TIDAK NORMAL", "YA", "RUSAK", "ADA",
+                                        "TIDAK BERFUNGSI", "TIDAK MENYALA", "KOTOR", "TIDAK LANCAR" -> Color.Red
+
+                                        "BAIK", "NORMAL", "BERSIH", "BERFUNGSI", "TIDAK RUSAK", "TIDAK ADA",
+                                        "LANCAR", "MENYALA", "TIDAK" -> darkBlue
+
                                         else -> Color.Gray
                                     }
 
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 2.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = namaBersih,
-                                            fontSize = 13.sp,
-                                            color = darkBlue,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(end = 8.dp)
-                                        )
+                                    Column(modifier = Modifier.fillMaxWidth()) {
 
-                                        Text(
-                                            text = status,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold, // ✅ tebal
-                                            color = warna,
-                                            textAlign = TextAlign.End,   // ✅ rata kanan
-                                            modifier = Modifier.weight(0.6f)
-                                        )
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+
+                                            // 🔹 Nama item WRAP otomatis
+                                            Text(
+                                                text = namaBersih,
+                                                fontSize = 13.sp,
+                                                color = darkBlue,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .padding(end = 8.dp),
+                                                maxLines = Int.MAX_VALUE,
+                                                overflow = TextOverflow.Visible
+                                            )
+
+                                            // 🔹 Status rata kanan
+                                            Text(
+                                                text = status,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = warna,
+                                                textAlign = TextAlign.End,
+                                                modifier = Modifier.weight(0.5f),
+                                                maxLines = 1
+                                            )
+                                        }
+
+                                        // 🔹 Garis pemisah antar baris (lebih halus)
+                                        if (index < items.size - 1) {
+                                            Divider(
+                                                color = Color.LightGray.copy(alpha = 0.7f),
+                                                thickness = 1.dp,
+                                                modifier = Modifier.padding(vertical = 4.dp)
+                                            )
+                                        }
                                     }
-                                    Divider()
                                 }
                             }
                         }

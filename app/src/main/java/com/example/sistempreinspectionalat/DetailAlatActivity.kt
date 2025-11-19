@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
@@ -226,7 +227,11 @@ fun DetailAlatScreen(kodeAlat: String) {
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                kondisiTerkini.forEach { (komponen, kondisi) ->
+                                kondisiTerkini.entries.forEachIndexed { index, entry ->
+
+                                    val komponen = entry.key
+                                    val kondisi = entry.value
+
                                     val namaBersih = komponen
                                         .replace("_", " ")
                                         .removeParenthesesText()
@@ -238,32 +243,47 @@ fun DetailAlatScreen(kodeAlat: String) {
                                         else -> Color.Gray
                                     }
 
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = namaBersih,
-                                            fontSize = 13.sp,
-                                            color = darkBlue,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(end = 8.dp)
-                                        )
+                                    Column(modifier = Modifier.fillMaxWidth()) {
 
-                                        Text(
-                                            text = kondisi.capitalizeWords(),
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold, // ✅ Bold
-                                            color = warna,
-                                            textAlign = TextAlign.End,     // ✅ Rata kanan
+                                        Row(
                                             modifier = Modifier
-                                                .weight(0.6f)
-                                                .padding(start = 8.dp),
-                                            maxLines = 1
-                                        )
+                                                .fillMaxWidth()
+                                                .padding(vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+
+                                            // 🔹 Nama item (wrap)
+                                            Text(
+                                                text = namaBersih,
+                                                fontSize = 13.sp,
+                                                color = darkBlue,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .padding(end = 8.dp),
+                                                maxLines = Int.MAX_VALUE,
+                                                overflow = TextOverflow.Visible
+                                            )
+
+                                            // 🔹 Kondisi rata kanan
+                                            Text(
+                                                text = kondisi.capitalizeWords(),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = warna,
+                                                textAlign = TextAlign.End,
+                                                modifier = Modifier.weight(0.5f),
+                                                maxLines = 1
+                                            )
+                                        }
+
+                                        // 🔹 Garis pemisah antar baris
+                                        if (index < kondisiTerkini.size - 1) {
+                                            Divider(
+                                                color = Color.LightGray.copy(alpha = 0.7f),
+                                                thickness = 1.dp,
+                                                modifier = Modifier.padding(vertical = 4.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
